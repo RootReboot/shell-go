@@ -20,7 +20,7 @@ func main() {
 
 		//Echo
 		if len(command) > 5 && command[:5] == "echo " {
-			fmt.Println(command[5:])
+			fmt.Print(command[5:])
 			continue
 		}
 
