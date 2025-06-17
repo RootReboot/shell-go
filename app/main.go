@@ -18,6 +18,12 @@ func main() {
 		// Wait for user input
 		command, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 
+		//Echo
+		if len(command) > 5 && command[:5] == "echo " {
+			fmt.Println(command[5:])
+			continue
+		}
+
 		//Exit
 		if command == "exit 0\n" {
 			break
