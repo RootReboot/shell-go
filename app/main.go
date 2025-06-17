@@ -22,7 +22,6 @@ func main() {
 		if len(command) > 4 && command[:5] == "type " {
 
 			commandAsked := command[5:]
-			fmt.Println(commandAsked)
 			//Having the string literals li
 			switch commandAsked {
 			case "echo\n":
