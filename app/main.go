@@ -18,6 +18,28 @@ func main() {
 		// Wait for user input
 		command, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 
+		//Type
+		if len(command) > 4 && command[:5] == "type " {
+
+			commandAsked := command[5:]
+			fmt.Println(commandAsked)
+			//Having the string literals li
+			switch commandAsked {
+			case "echo\n":
+				fmt.Print("echo")
+			case "exit\n":
+				fmt.Print("exit")
+			case "type\n":
+				os.Stdout.WriteString("type")
+			default:
+				fmt.Println(command[:len(command)-1] + ": command not found")
+				continue
+			}
+
+			os.Stdout.WriteString(" is a shell builtin\n")
+			continue
+		}
+
 		//Echo
 		if len(command) > 5 && command[:5] == "echo " {
 			fmt.Print(command[5:])
