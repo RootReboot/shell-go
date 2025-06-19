@@ -40,7 +40,7 @@ func main() {
 			case "echo", "exit", "type":
 				os.Stdout.WriteString(arg)
 			default:
-				fmt.Println(arg + ": command not found")
+				fmt.Println(arg + ": not found")
 				continue
 			}
 
