@@ -4,10 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
-
-// Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
-var _ = fmt.Fprint
 
 func main() {
 
@@ -16,22 +14,33 @@ func main() {
 		fmt.Fprint(os.Stdout, "$ ")
 
 		// Wait for user input
-		command, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+
+		var fields = strings.Fields(input)
+
+		//If nothing is inserted, then we show the prompt again.
+		if len(fields) == 0 {
+			continue
+		}
+
+		cmd := fields[0]
 
 		//Type
-		if len(command) > 4 && command[:5] == "type " {
+		if cmd == "type" {
 
-			commandAsked := command[5:]
-			//Having the string literals li
-			switch commandAsked {
-			case "echo\n":
-				fmt.Print("echo")
-			case "exit\n":
-				fmt.Print("exit")
-			case "type\n":
-				os.Stdout.WriteString("type")
+			if len(fields) != 2 {
+				printCommandNotFound(cmd)
+				continue
+			}
+
+			arg := fields[1]
+
+			//We can then have a hashmap holding this
+			switch arg {
+			case "echo", "exit", "type":
+				os.Stdout.WriteString(arg)
 			default:
-				fmt.Println(command[:len(command)-1] + ": command not found")
+				fmt.Println(arg + ": command not found")
 				continue
 			}
 
@@ -40,17 +49,39 @@ func main() {
 		}
 
 		//Echo
-		if len(command) > 5 && command[:5] == "echo " {
-			fmt.Print(command[5:])
+		if cmd == "echo" {
+
+			if len(fields) < 2 {
+				printCommandNotFound(cmd)
+				break
+			}
+
+			lastIndex := len(fields) - 1
+			for i, word := range fields[1:] {
+				if i > 0 && i < lastIndex {
+					fmt.Print(" ")
+				}
+				fmt.Print(word)
+			}
+			fmt.Println()
+
 			continue
 		}
 
 		//Exit
-		if command == "exit 0\n" {
+		if cmd == "exit" {
+			if len(fields) != 2 || fields[1] != "0" {
+				printCommandNotFound(cmd)
+				continue
+			}
+
 			break
 		}
 
-		fmt.Println(command[:len(command)-1] + ": command not found")
-
+		printCommandNotFound(cmd)
 	}
+}
+
+func printCommandNotFound(cmd string) {
+	fmt.Println(cmd + ": command not found")
 }
