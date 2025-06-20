@@ -89,7 +89,7 @@ func HandleType(cmd string, args []string) bool {
 
 		fullPath := FindExecutableInPath(cmd)
 		if fullPath == "" {
-			fmt.Printf("%s is %s\n", cmd, fullPath)
+			fmt.Printf("%s is %s\n", arg, fullPath)
 		}
 
 		fmt.Println(arg + ": not found")
