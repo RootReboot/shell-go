@@ -63,11 +63,9 @@ func HandleExecutable(cmd string, args []string) bool {
 	}
 
 	execCMD := exec.Command(cmd, args...)
-	output, err := execCMD.Output()
-	if err != nil {
-		return false
-	}
-	fmt.Println(string(output))
+	execCMD.Stdout = os.Stdout
+	execCMD.Stderr = os.Stderr
+	execCMD.Run()
 
 	return true
 }
