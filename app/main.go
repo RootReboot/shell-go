@@ -88,7 +88,7 @@ func HandleType(cmd string, args []string) bool {
 
 	//We can then have a hashmap holding this
 	switch arg {
-	case "echo", "exit", "type":
+	case "echo", "exit", "type", "pwd":
 		os.Stdout.WriteString(arg)
 		os.Stdout.WriteString(" is a shell builtin\n")
 		return true
