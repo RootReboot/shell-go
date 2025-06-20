@@ -30,22 +30,25 @@ func main() {
 
 		switch cmd {
 		case "type":
-			successType := HandleType(cmd, args)
+			successType := HandleType(args)
 			if successType {
 				continue
 			}
 		case "echo":
-			successEcho := HandleEcho(cmd, args)
+			successEcho := HandleEcho(args)
 			if successEcho {
 				continue
 			}
 		case "exit":
-			successExit := HandleExit(cmd, args)
+			successExit := HandleExit(args)
 			if successExit {
 				os.Exit(0)
 			}
 		case "pwd":
 			HandlePWD()
+			continue
+		case "cd":
+			HandleCd(args)
 			continue
 		default:
 			successRunOfExec := HandleExecutable(cmd, args)
@@ -55,6 +58,20 @@ func main() {
 		}
 
 		printCommandNotFound(cmd)
+	}
+}
+
+func HandleCd(args []string) {
+
+	if len(args) != 1 {
+		return
+	}
+
+	path := args[0]
+
+	err := os.Chdir(path)
+	if err != nil {
+		fmt.Printf("cd: %s: No such file or directory", path)
 	}
 }
 
@@ -78,7 +95,7 @@ func HandleExecutable(cmd string, args []string) bool {
 	return true
 }
 
-func HandleType(cmd string, args []string) bool {
+func HandleType(args []string) bool {
 
 	if len(args) != 1 {
 		return false
@@ -88,7 +105,7 @@ func HandleType(cmd string, args []string) bool {
 
 	//We can then have a hashmap holding this
 	switch arg {
-	case "echo", "exit", "type", "pwd":
+	case "echo", "exit", "type", "pwd", "cd":
 		os.Stdout.WriteString(arg)
 		os.Stdout.WriteString(" is a shell builtin\n")
 		return true
@@ -125,7 +142,7 @@ func FindExecutableInPath(cmd string) string {
 	return ""
 }
 
-func HandleEcho(cmd string, args []string) bool {
+func HandleEcho(args []string) bool {
 	if len(args) < 1 {
 		return false
 	}
@@ -143,7 +160,7 @@ func HandleEcho(cmd string, args []string) bool {
 	return true
 }
 
-func HandleExit(cmd string, args []string) bool {
+func HandleExit(args []string) bool {
 
 	if len(args) != 1 || args[0] != "0" {
 		return false
