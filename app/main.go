@@ -69,10 +69,32 @@ func HandleCd(args []string) {
 
 	path := args[0]
 
+	path = SubstituteHomeDirectoryCharacter(path)
+
 	err := os.Chdir(path)
 	if err != nil {
 		fmt.Printf("cd: %s: No such file or directory\n", path)
 	}
+}
+
+func SubstituteHomeDirectoryCharacter(path string) string {
+	if path == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return home
+	}
+
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return home + path[1:] // skip the "~"
+	}
+
+	return path
 }
 
 func HandlePWD() {
