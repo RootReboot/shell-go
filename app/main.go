@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -25,84 +26,132 @@ func main() {
 		}
 
 		cmd := fields[0]
+		args := fields[1:]
 
 		//Type
-		if cmd == "type" {
-
-			if len(fields) != 2 {
-				printCommandNotFound(cmd)
-				continue
-			}
-
-			arg := fields[1]
-
-			//We can then have a hashmap holding this
-			switch arg {
-			case "echo", "exit", "type":
-				os.Stdout.WriteString(arg)
-				os.Stdout.WriteString(" is a shell builtin\n")
-				continue
-			}
-
-			pathEnvVar, envVarExists := os.LookupEnv("PATH")
-			if envVarExists {
-
-				pathsToCheck := strings.Split(pathEnvVar, ":")
-				commandIsPresent := false
-				for _, path := range pathsToCheck {
-					//Only supports single word argument
-					fullPath := filepath.Join(path, arg)
-
-					_, err := os.Stat(fullPath)
-					if err == nil {
-						fmt.Printf("%s is %s\n", arg, fullPath)
-						commandIsPresent = true
-						break
-					}
-				}
-
-				if commandIsPresent {
-					continue
-				}
-			}
-
-			fmt.Println(arg + ": not found")
-
+		successType := HandleType(cmd, args)
+		if successType {
 			continue
 		}
 
 		//Echo
-		if cmd == "echo" {
-
-			if len(fields) < 2 {
-				printCommandNotFound(cmd)
-				break
-			}
-
-			lastIndex := len(fields) - 1
-			for i, word := range fields[1:] {
-				if i > 0 && i < lastIndex {
-					fmt.Print(" ")
-				}
-				fmt.Print(word)
-			}
-			fmt.Println()
-
+		successEcho := HandleEcho(cmd, args)
+		if successEcho {
 			continue
 		}
 
 		//Exit
-		if cmd == "exit" {
-			if len(fields) != 2 || fields[1] != "0" {
-				printCommandNotFound(cmd)
-				continue
-			}
+		successExit := HandleExit(cmd, args)
+		if successExit {
+			continue
+		}
 
-			break
+		successRunOfExec := HandleExecutable(cmd, args)
+		if successRunOfExec {
+			continue
 		}
 
 		printCommandNotFound(cmd)
 	}
+}
+
+func HandleExecutable(cmd string, args []string) bool {
+
+	fullPath := FindExecutableInPath(cmd)
+	if fullPath == "" {
+		return false
+	}
+
+	execCMD := exec.Command(cmd, args...)
+	output, err := execCMD.Output()
+	if err != nil {
+		return false
+	}
+	fmt.Println(string(output))
+
+	return true
+}
+
+func HandleType(cmd string, args []string) bool {
+	if cmd == "type" {
+
+		if len(args) != 1 {
+			return false
+		}
+
+		arg := args[0]
+
+		//We can then have a hashmap holding this
+		switch arg {
+		case "echo", "exit", "type":
+			os.Stdout.WriteString(arg)
+			os.Stdout.WriteString(" is a shell builtin\n")
+			return true
+		}
+
+		fullPath := FindExecutableInPath(cmd)
+		if fullPath != "" {
+			fmt.Printf("%s is %s\n", cmd, fullPath)
+		}
+
+		fmt.Println(arg + ": not found")
+
+		return true
+	}
+
+	return false
+}
+
+func FindExecutableInPath(cmd string) string {
+	pathEnvVar, envVarExists := os.LookupEnv("PATH")
+	if envVarExists {
+
+		pathsToCheck := strings.Split(pathEnvVar, ":")
+		for _, path := range pathsToCheck {
+			//Only supports single word argument
+			fullPath := filepath.Join(path, cmd)
+
+			fileInfo, err := os.Stat(fullPath)
+			// Check if file exists and is executable
+			if err == nil && fileInfo.Mode().Perm()&0111 != 0 {
+				return fullPath
+			}
+		}
+	}
+
+	return ""
+}
+
+func HandleEcho(cmd string, args []string) bool {
+	if cmd == "echo" {
+		if len(args) < 1 {
+			return false
+		}
+
+		lastIndex := len(args) - 1
+		for i, word := range args {
+			fmt.Print(word)
+
+			if i < lastIndex {
+				fmt.Print(" ")
+			}
+		}
+		fmt.Println()
+
+		return true
+	}
+
+	return false
+}
+
+func HandleExit(cmd string, args []string) bool {
+	if cmd == "exit" {
+		if len(args) != 1 || args[0] != "0" {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func printCommandNotFound(cmd string) {
