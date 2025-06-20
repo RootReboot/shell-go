@@ -28,31 +28,39 @@ func main() {
 		cmd := fields[0]
 		args := fields[1:]
 
-		//Type
-		successType := HandleType(cmd, args)
-		if successType {
+		switch cmd {
+		case "type":
+			successType := HandleType(cmd, args)
+			if successType {
+				continue
+			}
+		case "echo":
+			successEcho := HandleEcho(cmd, args)
+			if successEcho {
+				continue
+			}
+		case "exit":
+			successExit := HandleExit(cmd, args)
+			if successExit {
+				os.Exit(0)
+			}
+		case "pwd":
+			HandlePWD()
 			continue
-		}
-
-		//Echo
-		successEcho := HandleEcho(cmd, args)
-		if successEcho {
-			continue
-		}
-
-		//Exit
-		successExit := HandleExit(cmd, args)
-		if successExit {
-			break
-		}
-
-		successRunOfExec := HandleExecutable(cmd, args)
-		if successRunOfExec {
-			continue
+		default:
+			successRunOfExec := HandleExecutable(cmd, args)
+			if successRunOfExec {
+				continue
+			}
 		}
 
 		printCommandNotFound(cmd)
 	}
+}
+
+func HandlePWD() {
+	currentWorkingDirectory, _ := os.Getwd()
+	fmt.Println(currentWorkingDirectory)
 }
 
 func HandleExecutable(cmd string, args []string) bool {
@@ -71,34 +79,30 @@ func HandleExecutable(cmd string, args []string) bool {
 }
 
 func HandleType(cmd string, args []string) bool {
-	if cmd == "type" {
 
-		if len(args) != 1 {
-			return false
-		}
+	if len(args) != 1 {
+		return false
+	}
 
-		arg := args[0]
+	arg := args[0]
 
-		//We can then have a hashmap holding this
-		switch arg {
-		case "echo", "exit", "type":
-			os.Stdout.WriteString(arg)
-			os.Stdout.WriteString(" is a shell builtin\n")
-			return true
-		}
-
-		fullPath := FindExecutableInPath(arg)
-		if fullPath != "" {
-			fmt.Printf("%s is %s\n", arg, fullPath)
-			return true
-		}
-
-		fmt.Println(arg + ": not found")
-
+	//We can then have a hashmap holding this
+	switch arg {
+	case "echo", "exit", "type":
+		os.Stdout.WriteString(arg)
+		os.Stdout.WriteString(" is a shell builtin\n")
 		return true
 	}
 
-	return false
+	fullPath := FindExecutableInPath(arg)
+	if fullPath != "" {
+		fmt.Printf("%s is %s\n", arg, fullPath)
+		return true
+	}
+
+	fmt.Println(arg + ": not found")
+
+	return true
 }
 
 func FindExecutableInPath(cmd string) string {
@@ -122,35 +126,29 @@ func FindExecutableInPath(cmd string) string {
 }
 
 func HandleEcho(cmd string, args []string) bool {
-	if cmd == "echo" {
-		if len(args) < 1 {
-			return false
-		}
-
-		lastIndex := len(args) - 1
-		for i, word := range args {
-			fmt.Print(word)
-
-			if i < lastIndex {
-				fmt.Print(" ")
-			}
-		}
-		fmt.Println()
-
-		return true
+	if len(args) < 1 {
+		return false
 	}
 
-	return false
+	lastIndex := len(args) - 1
+	for i, word := range args {
+		fmt.Print(word)
+
+		if i < lastIndex {
+			fmt.Print(" ")
+		}
+	}
+	fmt.Println()
+
+	return true
 }
 
 func HandleExit(cmd string, args []string) bool {
-	if cmd == "exit" {
-		if len(args) != 1 || args[0] != "0" {
-			return false
-		}
-		return true
+
+	if len(args) != 1 || args[0] != "0" {
+		return false
 	}
-	return false
+	return true
 }
 
 func printCommandNotFound(cmd string) {
