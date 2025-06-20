@@ -43,7 +43,7 @@ func main() {
 		//Exit
 		successExit := HandleExit(cmd, args)
 		if successExit {
-			continue
+			break
 		}
 
 		successRunOfExec := HandleExecutable(cmd, args)
