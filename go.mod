@@ -1,3 +1,5 @@
-module github.com/codecrafters-io/shell-starter-go
+module shelly
+
+
 
 go 1.24.0
