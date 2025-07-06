@@ -128,13 +128,9 @@ func (l *Lexer) readQuoted() string {
 				escaped := l.input[l.pos+1]
 
 				switch escaped {
-				case quote, '\\', 'n', 't':
+				case quote, '\\', '$', '`':
 					// Supported escape sequences
 					switch escaped {
-					case 'n':
-						builder.WriteByte('\n')
-					case 't':
-						builder.WriteByte('\t')
 					default:
 						builder.WriteByte(escaped)
 					}
