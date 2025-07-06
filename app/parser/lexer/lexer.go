@@ -31,63 +31,56 @@ func (l *Lexer) NextToken() token.Token {
 		return token.Token{Type: token.TokenEOF}
 	}
 
-	switch l.input[l.pos] {
-	case '|':
-		l.pos++
+	if l.input[l.pos] == '|' {
 		return token.Token{Type: token.TokenPipe, Value: "|"}
-	case '"', '\'':
-		return l.readQuoted()
 	}
 
-	// Parse a word token
-	start := l.pos
-	for l.pos < len(l.input) && !isWhiteSpace(l.input[l.pos]) && l.input[l.pos] != '|' {
-		//Special cases are dealt above
-		if l.input[l.pos] == '|' || l.input[l.pos] == '"' || l.input[l.pos] == '\'' {
+	var builder strings.Builder
+
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+
+		if isWhiteSpace(ch) || ch == '|' {
 			break
 		}
 
-		l.pos++
-	}
-	return token.Token{Type: token.TokenWord, Value: l.input[start:l.pos]}
-}
-
-func (l *Lexer) readQuoted() token.Token {
-
-	start := l.pos + 1
-
-	//Handles the case:
-	// Adjacent quoted strings 'hello' and 'world' are concatenated.
-	//e.g: "hello""what" -> hellowhat
-	var builder strings.Builder
-	for l.input[l.pos] == '"' || l.input[l.pos] == '\'' {
-
-		//skip opening quote
-		l.pos++
-		quoteStartIndex := l.pos
-
-		quote := l.input[l.pos-1]
-
-		for l.pos < len(l.input) && l.input[l.pos] != quote {
+		if ch == '"' || ch == '\'' {
+			quoted := l.readQuoted()
+			builder.WriteString(quoted)
+		} else {
+			// Regular unquoted character
+			builder.WriteByte(ch)
 			l.pos++
 		}
-
-		//Handles incomplete cases(e.g: "hello how are you)
-		if l.pos >= len(l.input) {
-			//Since it is incomplete we return the quote in the token
-			val := l.input[start-1:]
-			//Return error here
-			return token.Token{Type: token.TokenWord, Value: val}
-		}
-
-		val := l.input[quoteStartIndex:l.pos]
-		builder.WriteString(val)
-
-		// skip closing quote
-		l.pos++
 	}
 
 	return token.Token{Type: token.TokenWord, Value: builder.String()}
+}
+
+func (l *Lexer) readQuoted() string {
+	quote := l.input[l.pos]
+	//skip opening quote
+	l.pos++
+
+	start := l.pos
+
+	for l.pos < len(l.input) && l.input[l.pos] != quote {
+		l.pos++
+	}
+
+	//Handles incomplete cases(e.g: "hello how are you)
+	if l.pos >= len(l.input) {
+		//Since it is incomplete we return the quote in the token
+		val := l.input[start-1:]
+		return val
+	}
+
+	val := l.input[start:l.pos]
+	//Skip closing quote
+	l.pos++
+
+	return val
+
 }
 
 // skipWhitespace advances the position pointer past any whitespace characters.
