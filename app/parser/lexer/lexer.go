@@ -70,6 +70,48 @@ func (l *Lexer) readEscapeCharacter() byte {
 	return l.input[l.pos-1]
 }
 
+// // readEscapeCharacter returns the result of processing an escape sequence.
+// // It assumes the current position is at the backslash '\' and returns a valid escaped byte.
+// // For unknown escapes, it returns the backslash and following character literally.
+// func (l *Lexer) readEscapeCharacter() byte {
+// 	if l.pos+1 >= len(l.input) {
+// 		// Backslash at end of input — return it literally
+// 		l.pos++
+// 		return '\\'
+// 	}
+
+// 	escaped := l.input[l.pos+1]
+// 	var result byte
+
+// 	switch escaped {
+// 	case 'n':
+// 		result = '\n'
+// 	case 't':
+// 		result = '\t'
+// 	case '\\':
+// 		result = '\\'
+// 	case '"':
+// 		result = '"'
+// 	case '\'':
+// 		result = '\''
+// 	default:
+// 		// Unknown escape — treat \x as literal '\', 'x'
+// 		// Caller can handle appending both if needed
+// 		result = 0 // Signal that this is not a valid escape
+// 	}
+
+// 	if result != 0 {
+// 		l.pos += 2
+// 		return result
+// 	}
+
+// 	// Return the backslash literally and let the caller decide
+// 	l.pos += 2
+// 	// NOTE: Returning backslash and next char would need more logic,
+// 	// so here we just return backslash and let the caller handle the second byte
+// 	return '\\'
+// }
+
 func (l *Lexer) readQuoted() string {
 	quote := l.input[l.pos]
 	//skip opening quote
@@ -79,22 +121,31 @@ func (l *Lexer) readQuoted() string {
 	var builder strings.Builder
 	for l.pos < len(l.input) && l.input[l.pos] != quote {
 
-		if l.input[l.pos] == '\\' {
-			// Flush content before the escape
-			builder.WriteString(l.input[start:l.pos])
+		if l.pos+1 < len(l.input) {
+			escaped := l.input[l.pos+1]
 
-			// Check if there is a character to escape
-			if l.pos+1 < len(l.input) {
-				builder.WriteByte(l.input[l.pos+1])
+			switch escaped {
+			case quote, '\\', 'n', 't':
+				// Supported escape sequences
+				switch escaped {
+				case 'n':
+					builder.WriteByte('\n')
+				case 't':
+					builder.WriteByte('\t')
+				default:
+					builder.WriteByte(escaped)
+				}
 				l.pos += 2
-			} else {
-				// Lone backslash at end — treat as literal
+			default:
+				// Not a valid escape — keep backslash as-is
 				builder.WriteByte('\\')
-				l.pos++
+				builder.WriteByte(escaped)
+				l.pos += 2
 			}
-
-			start = l.pos // Reset start to skip over the escaped char
-			continue
+		} else {
+			// Lone backslash at end — treat as literal
+			builder.WriteByte('\\')
+			l.pos++
 		}
 
 		l.pos++
