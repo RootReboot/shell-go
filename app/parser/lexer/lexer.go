@@ -47,8 +47,7 @@ func (l *Lexer) NextToken() token.Token {
 		if ch == '"' || ch == '\'' {
 			quoted := l.readQuoted()
 			builder.WriteString(quoted)
-		}
-		if ch == '\\' {
+		} else if ch == '\\' {
 			escapedChar := l.readEscapeCharacter()
 			builder.WriteByte(escapedChar)
 		} else {
