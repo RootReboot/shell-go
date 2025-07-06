@@ -121,31 +121,38 @@ func (l *Lexer) readQuoted() string {
 	var builder strings.Builder
 	for l.pos < len(l.input) && l.input[l.pos] != quote {
 
-		if l.pos+1 < len(l.input) {
-			escaped := l.input[l.pos+1]
+		if l.input[l.pos] == '\\' {
+			builder.WriteString(l.input[start:l.pos]) // Flush before backslash
 
-			switch escaped {
-			case quote, '\\', 'n', 't':
-				// Supported escape sequences
+			if l.pos+1 < len(l.input) {
+				escaped := l.input[l.pos+1]
+
 				switch escaped {
-				case 'n':
-					builder.WriteByte('\n')
-				case 't':
-					builder.WriteByte('\t')
+				case quote, '\\', 'n', 't':
+					// Supported escape sequences
+					switch escaped {
+					case 'n':
+						builder.WriteByte('\n')
+					case 't':
+						builder.WriteByte('\t')
+					default:
+						builder.WriteByte(escaped)
+					}
+					l.pos += 2
 				default:
+					// Not a valid escape — keep backslash as-is
+					builder.WriteByte('\\')
 					builder.WriteByte(escaped)
+					l.pos += 2
 				}
-				l.pos += 2
-			default:
-				// Not a valid escape — keep backslash as-is
+			} else {
+				// Lone backslash at end — treat as literal
 				builder.WriteByte('\\')
-				builder.WriteByte(escaped)
-				l.pos += 2
+				l.pos++
 			}
-		} else {
-			// Lone backslash at end — treat as literal
-			builder.WriteByte('\\')
-			l.pos++
+
+			start = l.pos
+			continue
 		}
 
 		l.pos++
