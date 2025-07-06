@@ -60,5 +60,5 @@ func findExecutableBinaryInPath(cmd string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf(" %s: command not found", cmd)
+	return "", fmt.Errorf("%s: command not found", cmd)
 }
