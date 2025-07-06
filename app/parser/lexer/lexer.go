@@ -47,6 +47,10 @@ func (l *Lexer) NextToken() token.Token {
 		if ch == '"' || ch == '\'' {
 			quoted := l.readQuoted()
 			builder.WriteString(quoted)
+		}
+		if ch == '\\' {
+			escapedChar := l.readEscapeCharacter()
+			builder.WriteByte(escapedChar)
 		} else {
 			// Regular unquoted character
 			builder.WriteByte(ch)
@@ -55,6 +59,15 @@ func (l *Lexer) NextToken() token.Token {
 	}
 
 	return token.Token{Type: token.TokenWord, Value: builder.String()}
+}
+
+func (l *Lexer) readEscapeCharacter() byte {
+	//Right now we are in the escape character index
+	//We want to go to the next one.
+	//Two pos are jumped to also jump the character being escaped
+	l.pos = l.pos + 2
+
+	return l.input[l.pos-1]
 }
 
 func (l *Lexer) readQuoted() string {
