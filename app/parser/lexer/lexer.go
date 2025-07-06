@@ -44,13 +44,14 @@ func (l *Lexer) NextToken() token.Token {
 			break
 		}
 
-		if ch == '"' || ch == '\'' {
+		switch ch {
+		case '"', '\'':
 			quoted := l.readQuoted()
 			builder.WriteString(quoted)
-		} else if ch == '\\' {
+		case '\\':
 			escapedChar := l.readEscapeCharacter()
 			builder.WriteByte(escapedChar)
-		} else {
+		default:
 			// Regular unquoted character
 			builder.WriteByte(ch)
 			l.pos++
@@ -75,23 +76,40 @@ func (l *Lexer) readQuoted() string {
 	l.pos++
 
 	start := l.pos
-
+	var builder strings.Builder
 	for l.pos < len(l.input) && l.input[l.pos] != quote {
+
+		if l.input[l.pos] == '\\' {
+			// Flush content before the escape
+			builder.WriteString(l.input[start:l.pos])
+
+			// Check if there is a character to escape
+			if l.pos+1 < len(l.input) {
+				builder.WriteByte(l.input[l.pos+1])
+				l.pos += 2
+			} else {
+				// Lone backslash at end — treat as literal
+				builder.WriteByte('\\')
+				l.pos++
+			}
+
+			start = l.pos // Reset start to skip over the escaped char
+			continue
+		}
+
 		l.pos++
 	}
 
-	//Handles incomplete cases(e.g: "hello how are you)
+	// If closing quote was not found, return the rest as-is (unterminated string)
 	if l.pos >= len(l.input) {
-		//Since it is incomplete we return the quote in the token
-		val := l.input[start-1:]
-		return val
+		return l.input[start-1:] // Include opening quote
 	}
 
-	val := l.input[start:l.pos]
-	//Skip closing quote
-	l.pos++
+	// Append remaining content before closing quote
+	builder.WriteString(l.input[start:l.pos])
+	l.pos++ // Skip closing quote
 
-	return val
+	return builder.String()
 
 }
 
