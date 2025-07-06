@@ -4,6 +4,7 @@ package lexer
 
 import (
 	"shelly/app/parser/token"
+	"strings"
 )
 
 // Lexer represents a lexical analyzer that tokenizes a shell input string.
@@ -34,10 +35,8 @@ func (l *Lexer) NextToken() token.Token {
 	case '|':
 		l.pos++
 		return token.Token{Type: token.TokenPipe, Value: "|"}
-	case '"':
-		return l.readQuoted('"')
-	case '\'':
-		return l.readQuoted('\'')
+	case '"', '\'':
+		return l.readQuoted()
 	}
 
 	// Parse a word token
@@ -53,29 +52,42 @@ func (l *Lexer) NextToken() token.Token {
 	return token.Token{Type: token.TokenWord, Value: l.input[start:l.pos]}
 }
 
-func (l *Lexer) readQuoted(quote byte) token.Token {
-	//skip opening quote
-	l.pos++
+func (l *Lexer) readQuoted() token.Token {
 
-	start := l.pos
+	start := l.pos + 1
 
-	for l.pos < len(l.input) && l.input[l.pos] != quote {
+	//Handles the case:
+	// Adjacent quoted strings 'hello' and 'world' are concatenated.
+	//e.g: "hello""what" -> hellowhat
+	var builder strings.Builder
+	for l.input[l.pos] == '"' || l.input[l.pos] == '\'' {
+
+		//skip opening quote
+		l.pos++
+		quoteStartIndex := l.pos
+
+		quote := l.input[l.pos-1]
+
+		for l.pos < len(l.input) && l.input[l.pos] != quote {
+			l.pos++
+		}
+
+		//Handles incomplete cases(e.g: "hello how are you)
+		if l.pos >= len(l.input) {
+			//Since it is incomplete we return the quote in the token
+			val := l.input[start-1:]
+			//Return error here
+			return token.Token{Type: token.TokenWord, Value: val}
+		}
+
+		val := l.input[quoteStartIndex:l.pos]
+		builder.WriteString(val)
+
+		// skip closing quote
 		l.pos++
 	}
 
-	//Handles incomplete cases(e.g: "hello how are you)
-	if l.pos >= len(l.input) {
-		//Since it is incomplete we return the quote in the token
-		val := l.input[start-1:]
-		return token.Token{Type: token.TokenWord, Value: val}
-	}
-
-	val := l.input[start:l.pos]
-	//Skip closing quote
-	l.pos++
-
-	return token.Token{Type: token.TokenWord, Value: val}
-
+	return token.Token{Type: token.TokenWord, Value: builder.String()}
 }
 
 // skipWhitespace advances the position pointer past any whitespace characters.
