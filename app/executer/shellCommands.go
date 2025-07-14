@@ -8,6 +8,8 @@ import (
 	"unsafe"
 )
 
+var newLineSlice = []byte{'\n'}
+
 func handleType(args []string, out io.Writer) {
 
 	if len(args) != 1 {
@@ -48,6 +50,7 @@ func handlePWD(out io.Writer) {
 	currentWorkingDirectory, _ := os.Getwd()
 	byteCurrentWorkingDirectory := unsafe.Slice(unsafe.StringData(currentWorkingDirectory), len(currentWorkingDirectory))
 	out.Write(byteCurrentWorkingDirectory)
+	out.Write(newLineSlice)
 }
 
 func handleCd(args []string) {
