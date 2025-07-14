@@ -20,7 +20,9 @@ func runCommand(cmd ast.SimpleCommand) {
 
 	outFile := os.Stdout
 	if cmd.RedirectOut != nil {
-		outFile, err := os.Create(*cmd.RedirectOut)
+		var err error
+		//The := created a new var. So if I used the := it wouldn't override the outfile outside the if scope
+		outFile, err = os.Create(*cmd.RedirectOut)
 		if err != nil {
 			fmt.Printf("Failed to open file for redirection: %v\n", err)
 			return
