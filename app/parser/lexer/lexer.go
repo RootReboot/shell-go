@@ -68,6 +68,16 @@ func (l *Lexer) NextToken() token.Token {
 		}
 	}
 
+	if len(tokenValue) == 2 {
+		if tokenValue == "1>" {
+			return token.Token{Type: token.TokenRedirectOut, Value: tokenValue}
+		}
+
+		if tokenValue == "2>" {
+			return token.Token{Type: token.TokenRedirectErr, Value: tokenValue}
+		}
+	}
+
 	return token.Token{Type: token.TokenWord, Value: tokenValue}
 }
 

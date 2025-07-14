@@ -48,6 +48,18 @@ func (p *Parser) Parse() (ast.Pipeline, error) {
 		p.pos++
 	}
 
+	if p.match(token.TokenRedirectErr) {
+		// Advance the '2>'
+		p.pos++
+
+		if !p.match(token.TokenWord) {
+			return pipeline, fmt.Errorf("expected file name after '2>")
+		}
+
+		pipeline.RedirectErr = &p.tokens[p.pos].Value
+		p.pos++
+	}
+
 	return pipeline, nil
 }
 
@@ -77,6 +89,23 @@ func (p *Parser) parseSimpleCommand() (ast.SimpleCommand, error) {
 		}
 
 		cmd.RedirectOut = &p.tokens[p.pos].Value
+
+		//Move to the next pos
+		p.pos++
+	}
+
+	if p.match(token.TokenRedirectErr) {
+		// Advance the '2>'
+		p.pos++
+
+		if !p.match(token.TokenWord) {
+			return cmd, fmt.Errorf("expected file name after '>")
+		}
+
+		cmd.RedirectErr = &p.tokens[p.pos].Value
+
+		//Move to the next pos
+		p.pos++
 	}
 
 	return cmd, nil

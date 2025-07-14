@@ -29,8 +29,19 @@ func runCommand(cmd ast.SimpleCommand) {
 		}
 		defer outFile.Close()
 	}
-
 	var out io.Writer = outFile
+
+	errFile := os.Stderr
+	if cmd.RedirectErr != nil {
+		var err error
+		//The := created a new var. So if I used the := it wouldn't override the outfile outside the if scope
+		errFile, err = os.Create(*cmd.RedirectErr)
+		if err != nil {
+			fmt.Printf("Failed to open file for redirection: %v\n", err)
+			return
+		}
+		defer errFile.Close()
+	}
 
 	cmdName := cmd.Args[0]
 	args := cmd.Args[1:]
@@ -48,7 +59,7 @@ func runCommand(cmd ast.SimpleCommand) {
 	case "cd":
 		handleCd(args)
 	default:
-		if err := runExecutable(cmd, outFile); err != nil {
+		if err := runExecutable(cmd, outFile, errFile); err != nil {
 			fmt.Println(err)
 		}
 	}

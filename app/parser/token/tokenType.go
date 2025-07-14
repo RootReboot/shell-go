@@ -8,4 +8,5 @@ const (
 	TokenWord
 	TokenPipe
 	TokenRedirectOut
+	TokenRedirectErr
 )
