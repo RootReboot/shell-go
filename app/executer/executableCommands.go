@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-func runExecutable(cmd ast.SimpleCommand) error {
+func runExecutable(cmd ast.SimpleCommand, outFile *os.File) error {
 	if len(cmd.Args) == 0 {
 		fmt.Println("empty command")
 	}
@@ -28,7 +28,7 @@ func runExecutable(cmd ast.SimpleCommand) error {
 		Env: env,
 		Files: []uintptr{
 			os.Stdin.Fd(),
-			os.Stdout.Fd(),
+			outFile.Fd(),
 			os.Stderr.Fd(),
 		},
 	})

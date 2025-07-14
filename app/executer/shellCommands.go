@@ -2,11 +2,13 @@ package executer
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"unsafe"
 )
 
-func handleType(args []string) {
+func handleType(args []string, out io.Writer) {
 
 	if len(args) != 1 {
 		fmt.Println("No arg present when handling the type command")
@@ -17,23 +19,35 @@ func handleType(args []string) {
 	//We can then have a hashmap holding this
 	switch arg {
 	case "echo", "exit", "type", "pwd", "cd":
-		os.Stdout.WriteString(arg)
-		os.Stdout.WriteString(" is a shell builtin\n")
+		byteArg := unsafe.Slice(unsafe.StringData(arg), len(arg))
+		out.Write(byteArg)
+
+		byteResponse := " is a shell builtin\n"
+		byteData := unsafe.Slice(unsafe.StringData(byteResponse), len(byteResponse))
+		out.Write(byteData)
+
 		return
 	}
 
 	fullPath, _ := findExecutableBinaryInPath(arg)
 	if fullPath != "" {
-		fmt.Printf("%s is %s\n", arg, fullPath)
+		//Simple way to write to either console or file
+		fmt.Fprintf(out, "%s is %s\n", arg, fullPath)
 		return
 	}
 
-	fmt.Println(arg + ": not found")
+	byteArgData := unsafe.Slice(unsafe.StringData(arg), len(arg))
+	out.Write(byteArgData)
+
+	response := ": not found\n"
+	byteResponse := unsafe.Slice(unsafe.StringData(response), len(response))
+	out.Write(byteResponse)
 }
 
-func handlePWD() {
+func handlePWD(out io.Writer) {
 	currentWorkingDirectory, _ := os.Getwd()
-	fmt.Println(currentWorkingDirectory)
+	byteCurrentWorkingDirectory := unsafe.Slice(unsafe.StringData(currentWorkingDirectory), len(currentWorkingDirectory))
+	out.Write(byteCurrentWorkingDirectory)
 }
 
 func handleCd(args []string) {

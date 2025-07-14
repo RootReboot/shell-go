@@ -7,4 +7,5 @@ const (
 	TokenEOF TokenType = iota
 	TokenWord
 	TokenPipe
+	TokenRedirectOut
 )

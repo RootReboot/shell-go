@@ -27,6 +27,7 @@ func (p *Parser) Parse() (ast.Pipeline, error) {
 
 	pipeline.Commands = append(pipeline.Commands, cmd)
 
+	//TODO: This needs to be fixed
 	for p.match(token.TokenPipe) {
 		cmd, err := p.parseSimpleCommand()
 		if err != nil {
@@ -34,6 +35,17 @@ func (p *Parser) Parse() (ast.Pipeline, error) {
 		}
 
 		pipeline.Commands = append(pipeline.Commands, cmd)
+	}
+
+	if p.match(token.TokenRedirectOut) {
+		p.pos++
+
+		if !p.match(token.TokenWord) {
+			return pipeline, fmt.Errorf("expected file name after '>")
+		}
+
+		pipeline.RedirectOut = &p.tokens[p.pos].Value
+		p.pos++
 	}
 
 	return pipeline, nil
@@ -46,6 +58,7 @@ func (p *Parser) parseSimpleCommand() (ast.SimpleCommand, error) {
 		return cmd, fmt.Errorf("expected command")
 	}
 
+	//First word in the command
 	cmd.Args = append(cmd.Args, p.tokens[p.pos].Value)
 	p.pos++
 
@@ -53,6 +66,17 @@ func (p *Parser) parseSimpleCommand() (ast.SimpleCommand, error) {
 	for p.match(token.TokenWord) {
 		cmd.Args = append(cmd.Args, p.tokens[p.pos].Value)
 		p.pos++
+	}
+
+	if p.match(token.TokenRedirectOut) {
+		// Advance the '>' or '1>'
+		p.pos++
+
+		if !p.match(token.TokenWord) {
+			return cmd, fmt.Errorf("expected file name after '>")
+		}
+
+		cmd.RedirectOut = &p.tokens[p.pos].Value
 	}
 
 	return cmd, nil

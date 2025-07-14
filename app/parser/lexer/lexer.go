@@ -32,6 +32,7 @@ func (l *Lexer) NextToken() token.Token {
 	}
 
 	if l.input[l.pos] == '|' {
+		l.pos++
 		return token.Token{Type: token.TokenPipe, Value: "|"}
 	}
 
@@ -58,7 +59,16 @@ func (l *Lexer) NextToken() token.Token {
 		}
 	}
 
-	return token.Token{Type: token.TokenWord, Value: builder.String()}
+	tokenValue := builder.String()
+
+	//cheaper to check the length in most cases then doing string comparison
+	if len(tokenValue) == 1 || len(tokenValue) == 2 {
+		if tokenValue == "1>" || tokenValue == ">" {
+			return token.Token{Type: token.TokenRedirectOut, Value: tokenValue}
+		}
+	}
+
+	return token.Token{Type: token.TokenWord, Value: tokenValue}
 }
 
 func (l *Lexer) readEscapeCharacter() byte {
@@ -69,48 +79,6 @@ func (l *Lexer) readEscapeCharacter() byte {
 
 	return l.input[l.pos-1]
 }
-
-// // readEscapeCharacter returns the result of processing an escape sequence.
-// // It assumes the current position is at the backslash '\' and returns a valid escaped byte.
-// // For unknown escapes, it returns the backslash and following character literally.
-// func (l *Lexer) readEscapeCharacter() byte {
-// 	if l.pos+1 >= len(l.input) {
-// 		// Backslash at end of input — return it literally
-// 		l.pos++
-// 		return '\\'
-// 	}
-
-// 	escaped := l.input[l.pos+1]
-// 	var result byte
-
-// 	switch escaped {
-// 	case 'n':
-// 		result = '\n'
-// 	case 't':
-// 		result = '\t'
-// 	case '\\':
-// 		result = '\\'
-// 	case '"':
-// 		result = '"'
-// 	case '\'':
-// 		result = '\''
-// 	default:
-// 		// Unknown escape — treat \x as literal '\', 'x'
-// 		// Caller can handle appending both if needed
-// 		result = 0 // Signal that this is not a valid escape
-// 	}
-
-// 	if result != 0 {
-// 		l.pos += 2
-// 		return result
-// 	}
-
-// 	// Return the backslash literally and let the caller decide
-// 	l.pos += 2
-// 	// NOTE: Returning backslash and next char would need more logic,
-// 	// so here we just return backslash and let the caller handle the second byte
-// 	return '\\'
-// }
 
 func (l *Lexer) readQuoted() string {
 	quote := l.input[l.pos]
