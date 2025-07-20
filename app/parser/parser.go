@@ -108,6 +108,34 @@ func (p *Parser) parseSimpleCommand() (ast.SimpleCommand, error) {
 		p.pos++
 	}
 
+	if p.match(token.TokenAppendRedirectOut) {
+		// Advance the '>>' or '1>>'
+		p.pos++
+
+		if !p.match(token.TokenWord) {
+			return cmd, fmt.Errorf("expected file name after '>")
+		}
+
+		cmd.AppendRedirectOut = &p.tokens[p.pos].Value
+
+		//Move to the next pos
+		p.pos++
+	}
+
+	if p.match(token.TokenAppendRedirectErr) {
+		// Advance the '2>>'
+		p.pos++
+
+		if !p.match(token.TokenWord) {
+			return cmd, fmt.Errorf("expected file name after '>")
+		}
+
+		cmd.AppendRedirectErr = &p.tokens[p.pos].Value
+
+		//Move to the next pos
+		p.pos++
+	}
+
 	return cmd, nil
 }
 

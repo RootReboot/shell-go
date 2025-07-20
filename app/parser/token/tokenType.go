@@ -9,4 +9,6 @@ const (
 	TokenPipe
 	TokenRedirectOut
 	TokenRedirectErr
+	TokenAppendRedirectOut
+	TokenAppendRedirectErr
 )
