@@ -62,7 +62,7 @@ func runCommand(cmd ast.SimpleCommand) {
 			fmt.Printf("Failed to open file for append redirection err: %v\n", err)
 			return
 		}
-		defer outFile.Close()
+		defer errFile.Close()
 	}
 
 	var out io.Writer = outFile
