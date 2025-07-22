@@ -26,7 +26,7 @@ install_readline_if_missing() {
       elif command -v pacman >/dev/null 2>&1; then
         sudo pacman -Sy --noconfirm readline pkgconf
       elif command -v apk >/dev/null 2>&1; then
-        sudo apk add --no-cache readline-dev
+        apk add --no-cache readline-dev
       else
         echo "❌ Unsupported Linux distro. Install libreadline-dev manually."
         exit 1
