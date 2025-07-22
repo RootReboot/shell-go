@@ -11,6 +11,8 @@ set -e # Exit on failure
 # 🧠 Detect OS
 OS="$(uname -s)"
 
+echo  "The Os of the pipeline machine is $OS"
+
 install_readline_if_missing() {
   echo "🔍 Checking for GNU Readline..."
 
