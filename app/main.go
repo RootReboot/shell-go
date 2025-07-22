@@ -66,7 +66,6 @@ func main() {
 		// // Wait for user input
 		// input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 
-
 		var lex = lexer.NewLexer(input)
 		tokens := []token.Token{}
 		for {
