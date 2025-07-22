@@ -39,7 +39,38 @@ install_readline_if_missing() {
   esac
 }
 
+install_build_tools_if_missing() {
+  echo "🔍 Checking for C compiler (gcc)..."
+
+  if command -v gcc >/dev/null 2>&1; then
+    echo "✅ gcc found."
+    return
+  fi
+
+  echo "❌ gcc not found. Installing build tools..."
+
+  OS=$(uname -s)
+  case "$OS" in
+    Linux*)
+      if command -v apt-get >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y build-essential
+      elif command -v apk >/dev/null 2>&1; then
+        apk add --no-cache build-base
+      else
+        echo "❌ Unsupported Linux distro. Install gcc manually."
+        exit 1
+      fi
+      ;;
+    *)
+      echo "❌ Unsupported OS: $OS"
+      exit 1
+      ;;
+  esac
+}
+
 # 🔧 Install Readline if needed
+install_build_tools_if_missing
 install_readline_if_missing
 
 
