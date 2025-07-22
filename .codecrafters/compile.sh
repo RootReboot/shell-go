@@ -16,11 +16,6 @@ echo  "The Os of the pipeline machine is $OS"
 install_readline_if_missing() {
   echo "🔍 Checking for GNU Readline..."
 
-  if pkg-config --exists readline; then
-    echo "✅ GNU Readline already installed"
-    return
-  fi
-
   echo "❌ GNU Readline not found. Attempting to install..."
 
   case "$OS" in
@@ -30,6 +25,8 @@ install_readline_if_missing() {
         sudo apt-get install -y libreadline-dev pkg-config
       elif command -v pacman >/dev/null 2>&1; then
         sudo pacman -Sy --noconfirm readline pkgconf
+      elif command -v apk >/dev/null 2>&1; then
+        sudo apk add --no-cache readline-dev
       else
         echo "❌ Unsupported Linux distro. Install libreadline-dev manually."
         exit 1
