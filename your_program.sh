@@ -53,7 +53,7 @@ export CGO_ENABLED=1
 (
   cd "$(dirname "$0")"
 
-  go build -o /tmp/codecrafters-build-shell-go app/*.go
+  go build -o /tmp/codecrafters-build-shell-go ./app
 )
 
 # Copied from .codecrafters/run.sh

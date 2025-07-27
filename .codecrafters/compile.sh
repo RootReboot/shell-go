@@ -79,5 +79,5 @@ echo "Building Go project with CGO enabled..."
 export CGO_ENABLED=1
 
 # 🛠 Compile your shell
-go build -o /tmp/codecrafters-build-shell-go app/*.go
+go build -o /tmp/codecrafters-build-shell-go ./app
 
