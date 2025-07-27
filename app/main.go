@@ -3,6 +3,7 @@ package main
 /*
 #cgo LDFLAGS: -lreadline
 #include <stdlib.h>
+#include <stdio.h>
 #include <readline/readline.h>
 #include "readline_helper.h"
 */
