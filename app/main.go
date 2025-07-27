@@ -2,43 +2,9 @@ package main
 
 /*
 #cgo LDFLAGS: -lreadline
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <readline/readline.h>
-#include <readline/history.h>
-
-// Custom generator for a fixed set of completions
-char* commands[] = {"help", "exit", "run", "status", "echo", "type", NULL};
-
-// Generator function called repeatedly by readline
-char* my_generator(const char* text, int state) {
-    static int list_index, len;
-    char* name;
-
-    if (!state) {
-        list_index = 0;
-        len = strlen(text);
-    }
-
-    while ((name = commands[list_index++])) {
-        if (strncmp(name, text, len) == 0) {
-            return strdup(name);
-        }
-    }
-
-    return NULL;
-}
-
-// Called by readline when tab is pressed
-char** my_completion(const char* text, int start, int end) {
-    return rl_completion_matches(text, my_generator);
-}
-
-// Set the completion function
-void setup_completion() {
-    rl_attempted_completion_function = my_completion;
-}
+#include "readline_helper.h"
 */
 import "C"
 
@@ -61,11 +27,17 @@ func main() {
 		C.free(unsafe.Pointer(prompt))
 
 		input := C.GoString(line)
+		C.free(unsafe.Pointer(line))
 
 		// fmt.Fprint(os.Stdout, "$ ")
 
 		// // Wait for user input
 		// input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+
+		//Future implementation
+		// if input != "" {
+		// 	C.add_history(C.CString(input))
+		// }
 
 		var lex = lexer.NewLexer(input)
 		tokens := []token.Token{}
