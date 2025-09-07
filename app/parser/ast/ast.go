@@ -3,18 +3,26 @@ package ast
 type Command interface{}
 
 type SimpleCommand struct {
-	Args              []string
-	AppendRedirectOut *string
-	AppendRedirectErr *string
-	RedirectOut       *string
-	RedirectErr       *string
+	Args      []string
+	Redirects []Redirect // Ordered list
 }
 
 type Pipeline struct {
 	Commands []SimpleCommand
 	// To support redirects from a pipe operations
-	AppendRedirectOut *string
-	AppendRedirectErr *string
-	RedirectOut       *string
-	RedirectErr       *string
+	Redirects []Redirect // Ordered list
+}
+
+type RedirectType int
+
+const (
+	RedirectStdout RedirectType = iota
+	RedirectStdoutAppend
+	RedirectStderr
+	RedirectStderrAppend
+)
+
+type Redirect struct {
+	Target string
+	Type   RedirectType
 }

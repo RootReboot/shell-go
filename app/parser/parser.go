@@ -21,14 +21,17 @@ func (p *Parser) Parse() (ast.Pipeline, error) {
 
 	cmd, err := p.parseSimpleCommand()
 
+	// Pre size the array with 4. To avoid copies and creation of new arrays underneath the slice
+	pipeline.Redirects = make([]ast.Redirect, 0, 4)
+
 	if err != nil {
 		return pipeline, err
 	}
 
 	pipeline.Commands = append(pipeline.Commands, cmd)
 
-	//TODO: This needs to be fixed
 	for p.match(token.TokenPipe) {
+		p.pos++
 		cmd, err := p.parseSimpleCommand()
 		if err != nil {
 			return pipeline, err
@@ -37,27 +40,8 @@ func (p *Parser) Parse() (ast.Pipeline, error) {
 		pipeline.Commands = append(pipeline.Commands, cmd)
 	}
 
-	if p.match(token.TokenRedirectOut) {
-		p.pos++
-
-		if !p.match(token.TokenWord) {
-			return pipeline, fmt.Errorf("expected file name after '>")
-		}
-
-		pipeline.RedirectOut = &p.tokens[p.pos].Value
-		p.pos++
-	}
-
-	if p.match(token.TokenRedirectErr) {
-		// Advance the '2>'
-		p.pos++
-
-		if !p.match(token.TokenWord) {
-			return pipeline, fmt.Errorf("expected file name after '2>")
-		}
-
-		pipeline.RedirectErr = &p.tokens[p.pos].Value
-		p.pos++
+	if err := AddRedirectInfo(p, &pipeline.Redirects); err != nil {
+		return pipeline, err
 	}
 
 	return pipeline, nil
@@ -80,17 +64,26 @@ func (p *Parser) parseSimpleCommand() (ast.SimpleCommand, error) {
 		p.pos++
 	}
 
+	// Pre size the array with 4. To avoid copies and creation of new arrays underneath the slice
+	cmd.Redirects = make([]ast.Redirect, 0, 4)
+
+	if err := AddRedirectInfo(p, &cmd.Redirects); err != nil {
+		return cmd, err
+	}
+
+	return cmd, nil
+}
+
+func AddRedirectInfo(p *Parser, redirects *[]ast.Redirect) error {
 	if p.match(token.TokenRedirectOut) {
-		// Advance the '>' or '1>'
 		p.pos++
 
 		if !p.match(token.TokenWord) {
-			return cmd, fmt.Errorf("expected file name after '>")
+			return fmt.Errorf("expected file name after >")
 		}
 
-		cmd.RedirectOut = &p.tokens[p.pos].Value
-
-		//Move to the next pos
+		stdoutRedirect := ast.Redirect{Target: p.tokens[p.pos].Value, Type: ast.RedirectStdout}
+		*redirects = append(*redirects, stdoutRedirect)
 		p.pos++
 	}
 
@@ -99,44 +92,39 @@ func (p *Parser) parseSimpleCommand() (ast.SimpleCommand, error) {
 		p.pos++
 
 		if !p.match(token.TokenWord) {
-			return cmd, fmt.Errorf("expected file name after '>")
+			return fmt.Errorf("expected file name after 2>")
 		}
 
-		cmd.RedirectErr = &p.tokens[p.pos].Value
-
-		//Move to the next pos
+		stderrRedirect := ast.Redirect{Target: p.tokens[p.pos].Value, Type: ast.RedirectStderr}
+		*redirects = append(*redirects, stderrRedirect)
 		p.pos++
 	}
 
 	if p.match(token.TokenAppendRedirectOut) {
-		// Advance the '>>' or '1>>'
 		p.pos++
 
 		if !p.match(token.TokenWord) {
-			return cmd, fmt.Errorf("expected file name after '>")
+			return fmt.Errorf("expected file name after >>")
 		}
 
-		cmd.AppendRedirectOut = &p.tokens[p.pos].Value
-
-		//Move to the next pos
+		stdoutAppendRedirect := ast.Redirect{Target: p.tokens[p.pos].Value, Type: ast.RedirectStdoutAppend}
+		*redirects = append(*redirects, stdoutAppendRedirect)
 		p.pos++
 	}
 
 	if p.match(token.TokenAppendRedirectErr) {
-		// Advance the '2>>'
 		p.pos++
 
 		if !p.match(token.TokenWord) {
-			return cmd, fmt.Errorf("expected file name after '>")
+			return fmt.Errorf("expected file name after >>")
 		}
 
-		cmd.AppendRedirectErr = &p.tokens[p.pos].Value
-
-		//Move to the next pos
+		stderrAppendRedirect := ast.Redirect{Target: p.tokens[p.pos].Value, Type: ast.RedirectStderrAppend}
+		*redirects = append(*redirects, stderrAppendRedirect)
 		p.pos++
 	}
 
-	return cmd, nil
+	return nil
 }
 
 func (p *Parser) match(tt token.TokenType) bool {
