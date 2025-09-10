@@ -2,15 +2,15 @@ package executer
 
 import (
 	"fmt"
-	"io"
 	"os"
+	"shelly/app/syscallHelpers"
 	"strings"
 	"unsafe"
 )
 
 var newLineSlice = []byte{'\n'}
 
-func handleType(args []string, out io.Writer) {
+func handleType(args []string, outFd uintptr) {
 
 	if len(args) != 1 {
 		fmt.Println("No arg present when handling the type command")
@@ -22,11 +22,11 @@ func handleType(args []string, out io.Writer) {
 	switch arg {
 	case "echo", "exit", "type", "pwd", "cd":
 		byteArg := unsafe.Slice(unsafe.StringData(arg), len(arg))
-		out.Write(byteArg)
+		syscallHelpers.WriteWithSyscall(int(outFd), byteArg)
 
 		byteResponse := " is a shell builtin\n"
 		byteData := unsafe.Slice(unsafe.StringData(byteResponse), len(byteResponse))
-		out.Write(byteData)
+		syscallHelpers.WriteWithSyscall(int(outFd), byteData)
 
 		return
 	}
@@ -34,23 +34,32 @@ func handleType(args []string, out io.Writer) {
 	fullPath, _ := findExecutableBinaryInPath(arg)
 	if fullPath != "" {
 		//Simple way to write to either console or file
-		fmt.Fprintf(out, "%s is %s\n", arg, fullPath)
+
+		// Preallocate with enough capacity to hold all parts
+		// Heap allocated.
+		msg := make([]byte, 0, len(arg)+len(" is ")+len(fullPath)+1)
+		msg = append(msg, arg...)
+		msg = append(msg, " is "...)
+		msg = append(msg, fullPath...)
+		msg = append(msg, '\n')
+
+		syscallHelpers.WriteWithSyscall(int(outFd), msg)
 		return
 	}
 
 	byteArgData := unsafe.Slice(unsafe.StringData(arg), len(arg))
-	out.Write(byteArgData)
+	syscallHelpers.WriteWithSyscall(int(outFd), byteArgData)
 
 	response := ": not found\n"
 	byteResponse := unsafe.Slice(unsafe.StringData(response), len(response))
-	out.Write(byteResponse)
+	syscallHelpers.WriteWithSyscall(int(outFd), byteResponse)
 }
 
-func handlePWD(out io.Writer) {
+func handlePWD(outFd uintptr) {
 	currentWorkingDirectory, _ := os.Getwd()
 	byteCurrentWorkingDirectory := unsafe.Slice(unsafe.StringData(currentWorkingDirectory), len(currentWorkingDirectory))
-	out.Write(byteCurrentWorkingDirectory)
-	out.Write(newLineSlice)
+	syscallHelpers.WriteWithSyscall(int(outFd), byteCurrentWorkingDirectory)
+	syscallHelpers.WriteWithSyscall(int(outFd), newLineSlice)
 }
 
 func handleCd(args []string) {

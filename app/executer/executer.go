@@ -10,6 +10,14 @@ import (
 
 func RunPipeline(p ast.Pipeline) {
 
+	if len(p.Commands) == 1 {
+		err := runSingleCommand(p.Commands[0])
+		if err != nil {
+			fmt.Printf("failed to run single command: %v\n", err)
+		}
+		return
+	}
+
 	// default stdout/stderr for the whole pipeline
 	stdoutFdPipe := os.Stdout.Fd()
 	stderrFdPipe := os.Stderr.Fd()
@@ -65,7 +73,7 @@ func RunPipeline(p ast.Pipeline) {
 		var pipeFd [2]int
 		if i < len(p.Commands)-1 {
 			if err := syscall.Pipe(pipeFd[:]); err != nil {
-				fmt.Println("pipe failed: %v\n", err)
+				fmt.Println("pipe failed: %v", err)
 				return
 			}
 		}
@@ -116,6 +124,64 @@ func RunPipeline(p ast.Pipeline) {
 		syscall.Wait4(pid, &status, 0, nil)
 	}
 
+}
+
+func runSingleCommand(cmd ast.SimpleCommand) (err error) {
+	if len(cmd.Args) == 0 {
+		fmt.Println("Didn't find any data in the command")
+	}
+
+	// default stdout/stderr for the whole pipeline
+	stdoutFdPipe := os.Stdout.Fd()
+	stderrFdPipe := os.Stderr.Fd()
+
+	redirectStdoutNullable, redirectStderrNullable, err := setupRedirectsFd(cmd.Redirects)
+
+	if err != nil {
+		return
+	}
+
+	if redirectStdout, hasValue := redirectStdoutNullable.Get(); hasValue {
+		stdoutFdPipe = uintptr(redirectStdout)
+
+		defer syscall.Close(redirectStdout)
+	}
+
+	if redirectStderr, hasValue := redirectStderrNullable.Get(); hasValue {
+		stderrFdPipe = uintptr(redirectStderr)
+
+		defer syscall.Close(redirectStderr)
+	}
+
+	cmdName := cmd.Args[0]
+	args := cmd.Args[1:]
+
+	switch cmdName {
+	case "type":
+		handleType(args, stdoutFdPipe)
+	case "exit":
+		successExit := handleExit(args)
+		if successExit {
+			os.Exit(0)
+		}
+	case "pwd":
+		handlePWD(stdoutFdPipe)
+	case "cd":
+		handleCd(args)
+	default:
+		pid, err := runExecutableWithFds(cmd, os.Stdin.Fd(), stdoutFdPipe, stderrFdPipe)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		var status syscall.WaitStatus
+		_, err = syscall.Wait4(pid, &status, 0, nil)
+		if err != nil {
+			return fmt.Errorf("wait4 failed: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func runCommandWithFds(cmd ast.SimpleCommand, stdinFd, stdoutFd, stderrFd uintptr) (pid int, fdsToClose []int, err error) {
