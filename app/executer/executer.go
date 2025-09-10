@@ -11,10 +11,10 @@ import (
 func RunPipeline(p ast.Pipeline) {
 
 	if len(p.Commands) == 1 {
-		err := runSingleCommand(p.Commands[0])
-		if err != nil {
-			fmt.Printf("failed to run single command: %v\n", err)
-		}
+		runSingleCommand(p.Commands[0])
+		// if err != nil {
+		// 	fmt.Printf("failed to run single command: %v\n", err)
+		// }
 		return
 	}
 
