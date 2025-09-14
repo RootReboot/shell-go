@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"shelly/app/syscallHelpers"
+	"strconv"
 	"strings"
 	"unsafe"
 )
@@ -117,11 +118,26 @@ func handleHistory(args []string) {
 		return // No history available
 	}
 
+	// Determine how many entries to print
+	var count int = -1 // default: print all
+	if len(args) > 0 {
+		n, err := strconv.Atoi(args[0])
+		if err != nil {
+			fmt.Printf("history: %s: numeric argument required\n", args[0])
+			return
+		}
+
+		if n > 0 {
+			count = n
+		}
+	}
+
 	// Convert the start of the history list to uintptr for pointer arithmetic
 	historyListStartPointer := uintptr(unsafe.Pointer(historyList))
 	// Size of each HIST_ENTRY* element in the array
 	historyEntrySize := unsafe.Sizeof(*historyList)
 
+	total := 0
 	for i := 0; ; i++ {
 		// Calculate pointer to the i-th HIST_ENTRY*
 		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
@@ -129,12 +145,27 @@ func handleHistory(args []string) {
 		entry := *(**C.HIST_ENTRY)(entryPointer)
 
 		if entry == nil {
+			total = i
 			break // Reached the end of the history list
 		}
+	}
+
+	startIndex := 0
+	if count < total {
+		startIndex = total - count
+	}
+
+	for i := startIndex; i < total; i++ {
+
+		// Calculate pointer to the i-th HIST_ENTRY*
+		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
+		// Dereference the pointer to get the actual HIST_ENTRY*
+		entry := *(**C.HIST_ENTRY)(entryPointer)
 
 		// Print the history index and the line content
 		fmt.Println(i+1, C.GoString(entry.line))
 	}
+
 }
 
 func substituteHomeDirectoryCharacter(path string) string {
