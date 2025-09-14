@@ -127,7 +127,7 @@ func handleHistory(args []string) {
 			return
 		}
 
-		if n > 0 {
+		if n >= 0 {
 			count = n
 		}
 	}
@@ -151,7 +151,7 @@ func handleHistory(args []string) {
 	}
 
 	startIndex := 0
-	if count < total {
+	if count >= 0 && count < total {
 		startIndex = total - count
 	}
 
