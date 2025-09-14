@@ -10,14 +10,30 @@ package main
 import "C"
 
 import (
+	"os"
 	"shelly/app/executer"
 	"shelly/app/parser"
+	"shelly/app/parser/ast"
 	"shelly/app/parser/lexer"
 	"shelly/app/parser/token"
 	"unsafe"
 )
 
 func main() {
+
+	// Check if we are in "run single command mode"
+	// This is used when a builtin command like cd is used in a pipeline
+	if len(os.Args) > 1 && os.Args[0] == "--run-builtin" {
+		// os.Args[2:] is the command and its args
+		cmd := ast.SimpleCommand{
+			Args: os.Args[1:],
+		}
+		// Run the command and exit immediately
+		if err := executer.RunSingleCommand(cmd); err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 
 	C.setup_completion()
 
@@ -57,21 +73,3 @@ func main() {
 		executer.RunPipeline(astTree)
 	}
 }
-
-// func HandleEcho(args []string) bool {
-// 	if len(args) < 1 {
-// 		return false
-// 	}
-
-// 	lastIndex := len(args) - 1
-// 	for i, word := range args {
-// 		fmt.Print(word)
-
-// 		if i < lastIndex {
-// 			fmt.Print(" ")
-// 		}
-// 	}
-// 	fmt.Println()
-
-// 	return true
-// }

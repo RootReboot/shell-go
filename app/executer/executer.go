@@ -11,7 +11,7 @@ import (
 func RunPipeline(p ast.Pipeline) {
 
 	if len(p.Commands) == 1 {
-		runSingleCommand(p.Commands[0])
+		RunSingleCommand(p.Commands[0])
 		// if err != nil {
 		// 	fmt.Printf("failed to run single command: %v\n", err)
 		// }
@@ -71,11 +71,13 @@ func RunPipeline(p ast.Pipeline) {
 	var cmdStderrFd uintptr = os.Stderr.Fd()
 	for i, cmd := range p.Commands {
 		var pipeFd [2]int
+		pipeCreated := false
 		if i < len(p.Commands)-1 {
 			if err := syscall.Pipe(pipeFd[:]); err != nil {
 				fmt.Println("pipe failed: %v", err)
 				return
 			}
+			pipeCreated = true
 		}
 
 		cmdStdinFd := os.Stdin.Fd()
@@ -95,7 +97,7 @@ func RunPipeline(p ast.Pipeline) {
 		pid, cmdFdsToClose, err := runCommandWithFds(cmd, cmdStdinFd, cmdStdoutFd, cmdStderrFd)
 
 		if err != nil {
-			fmt.Printf("failed to run command: %v\n", err)
+			cleanupPipeline(err, prevPipeReadFd, &pipeFd, pipeCreated, processes)
 			return
 		}
 
@@ -112,9 +114,10 @@ func RunPipeline(p ast.Pipeline) {
 		if prevPipeReadFd != -1 {
 			syscall.Close(prevPipeReadFd)
 		}
+
 		if i < len(p.Commands)-1 {
-			syscall.Close(pipeFd[1])
 			prevPipeReadFd = pipeFd[0]
+			syscall.Close(pipeFd[1])
 		}
 	}
 
@@ -126,14 +129,32 @@ func RunPipeline(p ast.Pipeline) {
 
 }
 
-func runSingleCommand(cmd ast.SimpleCommand) (err error) {
+func RunSingleCommand(cmd ast.SimpleCommand) (err error) {
 	if len(cmd.Args) == 0 {
 		fmt.Println("Didn't find any data in the command")
 	}
 
-	// default stdout/stderr for the whole pipeline
-	stdoutFdPipe := os.Stdout.Fd()
-	stderrFdPipe := os.Stderr.Fd()
+	// IMPORTANT: use syscall.Stdin/Stdout/Stderr instead of os.Stdin/os.Stdout/os.Stderr.
+	//
+	// Why?
+	// - When the parent shell forks/execs this process (via ForkExec), it explicitly sets up
+	//   file descriptors 0, 1, and 2 to point to pipes, files, or terminals depending on the
+	//   pipeline/redirect configuration.
+	// - In the re-executed child process, those descriptors are *already correct*:
+	//     fd 0 → stdin (maybe a pipe read end)
+	//     fd 1 → stdout (maybe a pipe write end)
+	//     fd 2 → stderr (maybe redirected to a file)
+	// - However, Go’s os.Stdin / os.Stdout / os.Stderr objects are initialized once at program
+	//   startup (before the fork/exec). After exec, they may still point to the parent’s original
+	//   terminal FDs, not the remapped ones provided by the shell.
+	//
+	// Using syscall.Stdin/Stdout/Stderr ensures we always respect the current process’s actual
+	// file descriptor table, which is exactly what the kernel set up for this child.
+	//
+	// In short: syscall.* reflects the real fd numbers (0,1,2) after exec, while os.* might be stale.
+	stdoutFdPipe := uintptr(syscall.Stdout) // fd 1
+	stderrFdPipe := uintptr(syscall.Stderr) // fd 2
+	stdinFdPipe := uintptr(syscall.Stdin)   // fd 0
 
 	redirectStdoutNullable, redirectStderrNullable, err := setupRedirectsFd(cmd.Redirects)
 
@@ -169,7 +190,7 @@ func runSingleCommand(cmd ast.SimpleCommand) (err error) {
 	case "cd":
 		handleCd(args)
 	default:
-		pid, err := runExecutableWithFds(cmd, os.Stdin.Fd(), stdoutFdPipe, stderrFdPipe)
+		pid, err := runExecutableWithFds(cmd, stdinFdPipe, stdoutFdPipe, stderrFdPipe)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -246,8 +267,13 @@ func runCommandWithFds(cmd ast.SimpleCommand, stdinFd, stdoutFd, stderrFd uintpt
 		//
 		// In short, ForkExec allows the shell to run any command or builtin in an isolated
 		// subprocess, connect pipes and redirects correctly, and maintain proper shell state.
+
+		argsForChild := make([]string, len(cmd.Args)+1)
+		argsForChild[0] = "--run-builtin"
+		copy(argsForChild[1:], cmd.Args)
+
 		pid, err := syscall.ForkExec("/proc/self/exe",
-			cmd.Args,
+			argsForChild,
 			&syscall.ProcAttr{
 				Env:   os.Environ(),
 				Files: []uintptr{stdinFd, stdoutFd, stderrFd},
@@ -261,6 +287,34 @@ func runCommandWithFds(cmd ast.SimpleCommand, stdinFd, stdoutFd, stderrFd uintpt
 	// External program
 	pid, err = runExecutableWithFds(cmd, stdinFd, stdoutFd, stderrFd)
 	return pid, fdsToClose, err
+}
+
+// cleanupPipeline closes open FDs, kills/waits children, and prints the error.
+func cleanupPipeline(err error, prevPipeReadFd int, pipeFd *[2]int, pipeCreated bool, processes []int) {
+	if err != nil {
+		fmt.Printf("failed to run command: %v\n", err)
+	}
+
+	// Close current pipe if we created it
+	if pipeCreated && pipeFd != nil {
+		syscall.Close(pipeFd[0])
+		syscall.Close(pipeFd[1])
+	}
+
+	// Close leftover read end from previous iteration
+	if prevPipeReadFd != -1 {
+		syscall.Close(prevPipeReadFd)
+	}
+
+	// Terminate and reap already-started child processes
+	for _, pid := range processes {
+		// Graceful termination first
+		syscall.Kill(pid, syscall.SIGTERM)
+	}
+	for _, pid := range processes {
+		var status syscall.WaitStatus
+		syscall.Wait4(pid, &status, 0, nil)
+	}
 }
 
 func setupRedirectsFd(redirects []ast.Redirect) (stdoutFd, stderrFd nullable.Nullable[int], err error) {
