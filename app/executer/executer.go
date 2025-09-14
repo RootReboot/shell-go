@@ -189,6 +189,8 @@ func RunSingleCommand(cmd ast.SimpleCommand) (err error) {
 		handlePWD(stdoutFdPipe)
 	case "cd":
 		handleCd(args)
+	case "history":
+		handleHistory(args)
 	default:
 		pid, err := runExecutableWithFds(cmd, stdinFdPipe, stdoutFdPipe, stderrFdPipe)
 		if err != nil {
@@ -243,7 +245,7 @@ func runCommandWithFds(cmd ast.SimpleCommand, stdinFd, stdoutFd, stderrFd uintpt
 	//
 	// This ensures builtins integrate seamlessly into pipelines, just like external commands.
 	switch cmdName {
-	case "exit", "cd", "pwd", "type":
+	case "exit", "cd", "pwd", "type", "history":
 		// ForkExec explanation:
 		//
 		// ForkExec is a low-level system call in Go that combines two classic Unix steps:

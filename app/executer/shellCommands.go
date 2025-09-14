@@ -1,5 +1,11 @@
 package executer
 
+/*
+#cgo LDFLAGS: -lreadline
+#include <readline/history.h>
+*/
+import "C"
+
 import (
 	"fmt"
 	"os"
@@ -20,7 +26,7 @@ func handleType(args []string, outFd uintptr) {
 
 	//We can then have a hashmap holding this
 	switch arg {
-	case "echo", "exit", "type", "pwd", "cd":
+	case "echo", "exit", "type", "pwd", "cd", "history":
 		byteArg := unsafe.Slice(unsafe.StringData(arg), len(arg))
 		syscallHelpers.WriteWithSyscall(int(outFd), byteArg)
 
@@ -84,6 +90,50 @@ func handleExit(args []string) bool {
 		return false
 	}
 	return true
+}
+
+// handleHistory prints the current Readline command history to stdout.
+//
+// It uses the GNU Readline C library's history API to access the in-memory
+// history list. Each line entered by the user is stored as a HIST_ENTRY* in
+// a NULL-terminated array.
+//
+// Parameters:
+//   - args: currently unused, but could be extended to support options
+//
+// How it works:
+// 1. Calls C.history_list() to get a pointer to the array of HIST_ENTRY*.
+// 2. If the history list is empty (nil), the function returns immediately.
+// 3. Converts the base pointer of the list to uintptr to allow pointer arithmetic.
+// 4. Iterates through the array:
+//   - Calculates the pointer to the i-th entry using pointer arithmetic.
+//   - Dereferences the pointer to get the HIST_ENTRY*.
+//   - Breaks the loop if the entry is nil (end of list).
+//   - Converts the C string (entry.line) to a Go string and prints it with its index.
+func handleHistory(args []string) {
+	historyList := C.history_list()
+	if historyList == nil {
+		return // No history available
+	}
+
+	// Convert the start of the history list to uintptr for pointer arithmetic
+	historyListStartPointer := uintptr(unsafe.Pointer(historyList))
+	// Size of each HIST_ENTRY* element in the array
+	historyEntrySize := unsafe.Sizeof(*historyList)
+
+	for i := 0; ; i++ {
+		// Calculate pointer to the i-th HIST_ENTRY*
+		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
+		// Dereference the pointer to get the actual HIST_ENTRY*
+		entry := *(**C.HIST_ENTRY)(entryPointer)
+
+		if entry == nil {
+			break // Reached the end of the history list
+		}
+
+		// Print the history index and the line content
+		fmt.Println(i+1, C.GoString(entry.line))
+	}
 }
 
 func substituteHomeDirectoryCharacter(path string) string {

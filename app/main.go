@@ -5,6 +5,7 @@ package main
 #include <stdlib.h>
 #include <stdio.h>
 #include <readline/readline.h>
+#include <readline/history.h>
 #include "readline_helper.h"
 */
 import "C"
@@ -44,6 +45,7 @@ func main() {
 		C.free(unsafe.Pointer(prompt))
 
 		input := C.GoString(line)
+		C.add_history(line)
 		C.free(unsafe.Pointer(line))
 
 		// fmt.Fprint(os.Stdout, "$ ")
