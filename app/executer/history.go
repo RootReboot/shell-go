@@ -139,8 +139,6 @@ func loadHistoryFromFile(args []string) {
 		fmt.Printf("history -r: failed to read history from %s\n", filename)
 		return
 	}
-
-	fmt.Printf("history: loaded from %s\n", filename)
 }
 
 // loadHistoryToFile saves the current readline history to a file.
