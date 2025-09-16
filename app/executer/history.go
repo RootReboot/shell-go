@@ -171,7 +171,7 @@ func loadHistoryToFile(args []string) {
 	}
 }
 
-// appendHistoryToFile appends new history entries to a file.
+// appendHistoryToFile appends new history entries to a file.a
 //
 // Usage: history -a [filename]
 // If no filename is provided, defaults to ~/.history
