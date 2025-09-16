@@ -3,6 +3,7 @@ package executer
 /*
 #cgo LDFLAGS: -lreadline
 #include <stdio.h>
+#include <stdlib.h>
 #include <readline/history.h>
 */
 import "C"
@@ -10,89 +11,11 @@ import "C"
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"shelly/app/syscallHelpers"
 	"strconv"
-	"strings"
 	"unsafe"
 )
-
-var newLineSlice = []byte{'\n'}
-
-func handleType(args []string, outFd uintptr) {
-
-	if len(args) != 1 {
-		fmt.Println("No arg present when handling the type command")
-	}
-
-	arg := args[0]
-
-	//We can then have a hashmap holding this
-	switch arg {
-	case "echo", "exit", "type", "pwd", "cd", "history":
-		byteArg := unsafe.Slice(unsafe.StringData(arg), len(arg))
-		syscallHelpers.WriteWithSyscall(int(outFd), byteArg)
-
-		byteResponse := " is a shell builtin\n"
-		byteData := unsafe.Slice(unsafe.StringData(byteResponse), len(byteResponse))
-		syscallHelpers.WriteWithSyscall(int(outFd), byteData)
-
-		return
-	}
-
-	fullPath, _ := findExecutableBinaryInPath(arg)
-	if fullPath != "" {
-		//Simple way to write to either console or file
-
-		// Preallocate with enough capacity to hold all parts
-		// Heap allocated.
-		msg := make([]byte, 0, len(arg)+len(" is ")+len(fullPath)+1)
-		msg = append(msg, arg...)
-		msg = append(msg, " is "...)
-		msg = append(msg, fullPath...)
-		msg = append(msg, '\n')
-
-		syscallHelpers.WriteWithSyscall(int(outFd), msg)
-		return
-	}
-
-	byteArgData := unsafe.Slice(unsafe.StringData(arg), len(arg))
-	syscallHelpers.WriteWithSyscall(int(outFd), byteArgData)
-
-	response := ": not found\n"
-	byteResponse := unsafe.Slice(unsafe.StringData(response), len(response))
-	syscallHelpers.WriteWithSyscall(int(outFd), byteResponse)
-}
-
-func handlePWD(outFd uintptr) {
-	currentWorkingDirectory, _ := os.Getwd()
-	byteCurrentWorkingDirectory := unsafe.Slice(unsafe.StringData(currentWorkingDirectory), len(currentWorkingDirectory))
-	syscallHelpers.WriteWithSyscall(int(outFd), byteCurrentWorkingDirectory)
-	syscallHelpers.WriteWithSyscall(int(outFd), newLineSlice)
-}
-
-func handleCd(args []string) {
-
-	if len(args) != 1 {
-		return
-	}
-
-	path := args[0]
-
-	path = substituteHomeDirectoryCharacter(path)
-
-	err := os.Chdir(path)
-	if err != nil {
-		fmt.Printf("cd: %s: No such file or directory\n", path)
-	}
-}
-
-func handleExit(args []string) bool {
-
-	if len(args) != 1 || args[0] != "0" {
-		return false
-	}
-	return true
-}
 
 // handleHistory prints the current Readline command history to stdout.
 //
@@ -113,6 +36,22 @@ func handleExit(args []string) bool {
 //   - Breaks the loop if the entry is nil (end of list).
 //   - Converts the C string (entry.line) to a Go string and prints it with its index.
 func handleHistory(args []string) {
+
+	if len(args) > 0 {
+		switch args[0] {
+		case "-r":
+			loadHistoryFromFile(args)
+			return
+		case "-w":
+			loadHistoryToFile(args)
+			return
+		case "-a":
+			appendHistoryToFile(args)
+			return
+		}
+
+	}
+
 	historyList := C.history_list()
 	if historyList == nil {
 		return // No history available
@@ -168,22 +107,95 @@ func handleHistory(args []string) {
 
 }
 
-func substituteHomeDirectoryCharacter(path string) string {
-	if path == "~" {
+// loadHistoryFromFile loads history entries from a file into the readline history.
+//
+// Usage: history -r [filename]
+// If no filename is provided, defaults to ~/.history or another configured file.
+func loadHistoryFromFile(args []string) {
+	var filename string
+
+	if len(args) > 1 {
+		filename = args[1]
+	} else {
+		// Default to ~/.history
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return path
+			fmt.Println("history -r: could not determine home directory")
+			return
 		}
-		return home
+		filename = filepath.Join(home, ".history")
 	}
 
-	if strings.HasPrefix(path, "~/") {
+	cFilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cFilename))
+
+	err := syscallHelpers.FileExists(filename)
+	if err != nil {
+		fmt.Printf("history -r: file not found: %s due to %v\n", filename, err)
+		return
+	}
+
+	if rc := C.read_history(cFilename); rc != 0 {
+		fmt.Printf("history -r: failed to read history from %s\n", filename)
+		return
+	}
+
+	fmt.Printf("history: loaded from %s\n", filename)
+}
+
+// loadHistoryToFile saves the current readline history to a file.
+//
+// Usage: history -w [filename]
+// If no filename is provided, nothing happens
+func loadHistoryToFile(args []string) {
+	var filename string
+
+	if len(args) > 1 {
+		filename = args[1]
+	} else {
+		// Default to ~/.history
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return path
+			fmt.Println("history -w: could not determine home directory")
+			return
 		}
-		return home + path[1:] // skip the "~"
+		filename = filepath.Join(home, ".history")
 	}
 
-	return path
+	cFilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cFilename))
+
+	// C.write_history creates the file if it does not exist
+	// Try writing history to file
+	if rc := C.write_history(cFilename); rc != 0 {
+		fmt.Printf("history -w: failed to write history to %s\n", filename)
+		return
+	}
+}
+
+// appendHistoryToFile appends new history entries to a file.
+//
+// Usage: history -a [filename]
+// If no filename is provided, defaults to ~/.history
+func appendHistoryToFile(args []string) {
+	var filename string
+	if len(args) > 1 {
+		filename = args[1]
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("history -a: could not determine home directory")
+			return
+		}
+		filename = filepath.Join(home, ".history")
+	}
+
+	cFilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cFilename))
+
+	// Append all new lines to the file; 0 means all new entries
+	if rc := C.append_history(0, cFilename); rc != 0 {
+		fmt.Printf("history -a: failed to append history to %s\n", filename)
+		return
+	}
 }

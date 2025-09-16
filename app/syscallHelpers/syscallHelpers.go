@@ -63,3 +63,13 @@ func WriteWithSyscall(fd int, data []byte) error {
 	}
 	return nil
 }
+
+// Mimics os.Stat . It was just to learn how it works :)
+func FileExists(filename string) error {
+	var stat syscall.Stat_t
+	err := syscall.Stat(filename, &stat)
+	if err != nil {
+		return err // return the raw syscall error
+	}
+	return nil // file exists, no error
+}
