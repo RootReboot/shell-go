@@ -10,9 +10,7 @@ import "C"
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"shelly/app/syscallHelpers"
+	"shelly/app/history"
 	"strconv"
 	"unsafe"
 )
@@ -24,7 +22,7 @@ import (
 // a NULL-terminated array.
 //
 // Parameters:
-//   - args: currently unused, but could be extended to support options
+//   - args: Support options
 //
 // How it works:
 // 1. Calls C.history_list() to get a pointer to the array of HIST_ENTRY*.
@@ -113,32 +111,11 @@ func handleHistory(args []string) {
 // If no filename is provided, defaults to ~/.history or another configured file.
 func loadHistoryFromFile(args []string) {
 	var filename string
-
 	if len(args) > 1 {
 		filename = args[1]
-	} else {
-		// Default to ~/.history
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Println("history -r: could not determine home directory")
-			return
-		}
-		filename = filepath.Join(home, ".history")
 	}
 
-	cFilename := C.CString(filename)
-	defer C.free(unsafe.Pointer(cFilename))
-
-	err := syscallHelpers.FileExists(filename)
-	if err != nil {
-		fmt.Printf("history -r: file not found: %s due to %v\n", filename, err)
-		return
-	}
-
-	if rc := C.read_history(cFilename); rc != 0 {
-		fmt.Printf("history -r: failed to read history from %s\n", filename)
-		return
-	}
+	history.GetHistoryManager().ReadHistory(filename)
 }
 
 // loadHistoryToFile saves the current readline history to a file.
@@ -147,28 +124,11 @@ func loadHistoryFromFile(args []string) {
 // If no filename is provided, nothing happens
 func loadHistoryToFile(args []string) {
 	var filename string
-
 	if len(args) > 1 {
 		filename = args[1]
-	} else {
-		// Default to ~/.history
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Println("history -w: could not determine home directory")
-			return
-		}
-		filename = filepath.Join(home, ".history")
 	}
 
-	cFilename := C.CString(filename)
-	defer C.free(unsafe.Pointer(cFilename))
-
-	// C.write_history creates the file if it does not exist
-	// Try writing history to file
-	if rc := C.write_history(cFilename); rc != 0 {
-		fmt.Printf("history -w: failed to write history to %s\n", filename)
-		return
-	}
+	history.GetHistoryManager().WriteHistoryToFile(filename)
 }
 
 // appendHistoryToFile appends new history entries to a file.a
@@ -179,21 +139,7 @@ func appendHistoryToFile(args []string) {
 	var filename string
 	if len(args) > 1 {
 		filename = args[1]
-	} else {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Println("history -a: could not determine home directory")
-			return
-		}
-		filename = filepath.Join(home, ".history")
 	}
 
-	cFilename := C.CString(filename)
-	defer C.free(unsafe.Pointer(cFilename))
-
-	// Append all new lines to the file; 0 means all new entries
-	if rc := C.append_history(0, cFilename); rc != 0 {
-		fmt.Printf("history -a: failed to append history to %s\n", filename)
-		return
-	}
+	history.GetHistoryManager().AppendHistoryToFile(filename)
 }

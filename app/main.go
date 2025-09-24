@@ -13,11 +13,11 @@ import "C"
 import (
 	"os"
 	"shelly/app/executer"
+	"shelly/app/history"
 	"shelly/app/parser"
 	"shelly/app/parser/ast"
 	"shelly/app/parser/lexer"
 	"shelly/app/parser/token"
-	"unsafe"
 )
 
 func main() {
@@ -36,27 +36,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	C.setup_completion()
+	historyManager := history.GetHistoryManager()
 
 	for true {
 
-		prompt := C.CString("$ ")
-		line := C.readline(prompt)
-		C.free(unsafe.Pointer(prompt))
+		prompt := "$ "
 
-		input := C.GoString(line)
-		C.add_history(line)
-		C.free(unsafe.Pointer(line))
-
-		// fmt.Fprint(os.Stdout, "$ ")
-
-		// // Wait for user input
-		// input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-
-		//Future implementation
-		// if input != "" {
-		// 	C.add_history(C.CString(input))
-		// }
+		input := historyManager.ReadLine(prompt)
 
 		var lex = lexer.NewLexer(input)
 		tokens := []token.Token{}

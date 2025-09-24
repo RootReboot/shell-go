@@ -11,7 +11,7 @@
 #define MAX_MATCHES 4096
 
 // Custom generator for a fixed set of completions
-char* commands[] = {"help", "exit", "run", "status", "type", NULL};
+char* commands[] = {"help", "exit", "run", "status", "type", "history",NULL};
 
 char* matches[MAX_MATCHES];
 int match_count = 0;
