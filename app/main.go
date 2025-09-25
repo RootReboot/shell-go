@@ -36,6 +36,7 @@ func main() {
 		os.Exit(0)
 	}
 
+	// test
 	historyManager := history.GetHistoryManager()
 
 	for true {
