@@ -27,6 +27,7 @@ type HistoryManager struct {
 	fileStates           map[string]*fileState // per-file tracking
 	defaultHistfilePath  string                // default HISTFILE path
 	defaultHistfilePathC *C.char               // C string for default file
+	countSessionHistory  int                   // counts the commands that were written in this section
 	loaded               bool
 	initOnce             sync.Once
 }
@@ -122,6 +123,7 @@ func (h *HistoryManager) AddCommand(line string) {
 
 	// Add to in-memory history
 	C.add_history(cLine)
+	h.countSessionHistory++
 
 	// Enforce HISTSIZE for in-memory history
 	if h.histSize > 0 && int(C.history_length) > h.histSize {
@@ -166,11 +168,11 @@ func (h *HistoryManager) AppendHistoryToFile(path string) {
 	fs, ok := h.fileStates[path]
 	if !ok {
 		historyLength := int(C.history_length)
-		fs = &fileState{startLength: historyLength, appendOffset: historyLength}
+		fs = &fileState{startLength: historyLength, appendOffset: 0}
 		h.fileStates[path] = fs
 	}
 
-	newLines := int(C.history_length) - fs.appendOffset
+	newLines := h.countSessionHistory - fs.appendOffset
 	if newLines > 0 {
 
 		cPath := C.CString(path)
@@ -182,7 +184,7 @@ func (h *HistoryManager) AppendHistoryToFile(path string) {
 			return
 		}
 
-		fs.appendOffset = int(C.history_length)
+		fs.appendOffset += newLines
 
 		// If this is the default histfile, enforce HISTFILESIZE
 		if path == h.defaultHistfilePath && h.histFileSize > 0 {
