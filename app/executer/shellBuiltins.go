@@ -3,6 +3,7 @@ package executer
 import (
 	"fmt"
 	"os"
+	"shelly/app/history"
 	"shelly/app/syscallHelpers"
 	"strings"
 	"unsafe"
@@ -83,6 +84,9 @@ func handleExit(args []string) bool {
 	if len(args) != 1 || args[0] != "0" {
 		return false
 	}
+
+	//Using "" it defaults to the default history file.
+	history.GetHistoryManager().AppendHistoryToFile("")
 	return true
 }
 

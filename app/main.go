@@ -12,15 +12,29 @@ import "C"
 
 import (
 	"os"
+	"os/signal"
 	"shelly/app/executer"
 	"shelly/app/history"
 	"shelly/app/parser"
 	"shelly/app/parser/ast"
 	"shelly/app/parser/lexer"
 	"shelly/app/parser/token"
+	"syscall"
 )
 
 func main() {
+
+	sigs := make(chan os.Signal, 1)
+	//Notifies the channel if a force exit signal by the os is made
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	go func() {
+		//Blocks channel until new message
+		<-sigs
+		//"" defaults to the default history file.
+		history.GetHistoryManager().AppendHistoryToFile("")
+		os.Exit(0)
+	}()
 
 	// Check if we are in "run single command mode"
 	// This is used when a builtin command like cd is used in a pipeline
@@ -36,7 +50,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// test
 	historyManager := history.GetHistoryManager()
 
 	for true {
