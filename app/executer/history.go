@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"shelly/app/history"
 	"strconv"
-	"unsafe"
 )
 
 // handleHistory prints the current Readline command history to stdout.
@@ -47,12 +46,6 @@ func handleHistory(args []string) {
 			appendHistoryToFile(args)
 			return
 		}
-
-	}
-
-	historyList := C.history_list()
-	if historyList == nil {
-		return // No history available
 	}
 
 	// Determine how many entries to print
@@ -69,40 +62,12 @@ func handleHistory(args []string) {
 		}
 	}
 
-	// Convert the start of the history list to uintptr for pointer arithmetic
-	historyListStartPointer := uintptr(unsafe.Pointer(historyList))
-	// Size of each HIST_ENTRY* element in the array
-	historyEntrySize := unsafe.Sizeof(*historyList)
+	historySoFar := history.GetHistory(count)
 
-	total := 0
-	for i := 0; ; i++ {
-		// Calculate pointer to the i-th HIST_ENTRY*
-		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
-		// Dereference the pointer to get the actual HIST_ENTRY*
-		entry := *(**C.HIST_ENTRY)(entryPointer)
-
-		if entry == nil {
-			total = i
-			break // Reached the end of the history list
-		}
-	}
-
-	startIndex := 0
-	if count >= 0 && count < total {
-		startIndex = total - count
-	}
-
-	for i := startIndex; i < total; i++ {
-
-		// Calculate pointer to the i-th HIST_ENTRY*
-		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
-		// Dereference the pointer to get the actual HIST_ENTRY*
-		entry := *(**C.HIST_ENTRY)(entryPointer)
-
+	for i, line := range historySoFar {
 		// Print the history index and the line content
-		fmt.Println(i+1, C.GoString(entry.line))
+		fmt.Println(i+1, line)
 	}
-
 }
 
 // loadHistoryFromFile loads history entries from a file into the readline history.

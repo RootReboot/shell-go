@@ -78,21 +78,60 @@ func (h *HistoryManager) init() {
 		h.defaultHistfilePath = histfilePath
 		// Load file if exists
 		if _, err := os.Stat(histfilePath); err == nil {
+			h.defaultHistfilePathC = C.CString(histfilePath)
+			h.defaultHistfilePath = histfilePath
 			C.read_history(h.defaultHistfilePathC)
 			h.fileStates[histfilePath] = &fileState{
 				startLength:  int(C.history_length),
 				appendOffset: int(C.history_length),
 			}
 		} else {
-			h.fileStates[histfilePath] = &fileState{
-				startLength:  0,
-				appendOffset: 0,
-			}
+			h.defaultHistfilePath = ""
+			h.defaultHistfilePathC = nil
 		}
 	}
 	h.loaded = true
 }
 
+// GetHistory returns the last `count` history entries as a slice of Go strings.
+// If count < 0, it returns all entries.
+func GetHistory(count int) []string {
+	historyList := C.history_list()
+	if historyList == nil {
+		return nil
+	}
+
+	// Pointer arithmetic setup
+	historyListStartPointer := uintptr(unsafe.Pointer(historyList))
+	historyEntrySize := unsafe.Sizeof(*historyList)
+
+	// Find total entries
+	total := 0
+	for i := 0; ; i++ {
+		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
+		entry := *(**C.HIST_ENTRY)(entryPointer)
+		if entry == nil {
+			total = i
+			break
+		}
+	}
+
+	// Determine starting index
+	startIndex := 0
+	if count >= 0 && count < total {
+		startIndex = total - count
+	}
+
+	// Collect entries into a slice of Go strings
+	result := make([]string, 0, total-startIndex)
+	for i := startIndex; i < total; i++ {
+		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
+		entry := *(**C.HIST_ENTRY)(entryPointer)
+		result = append(result, C.GoString(entry.line))
+	}
+
+	return result
+}
 func (h *HistoryManager) ReadLine(prompt string) string {
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
@@ -134,8 +173,13 @@ func (h *HistoryManager) AddCommand(line string) {
 }
 
 func (h *HistoryManager) WriteHistoryToFile(path string) {
+	//If empty then it goes to the default history file
 	if path == "" {
-		//If empty then it goes to the default history file
+		//This means there is no file to append the data.
+		if h.defaultHistfilePath == "" {
+			return
+		}
+
 		path = h.defaultHistfilePath
 	}
 
@@ -160,8 +204,13 @@ func (h *HistoryManager) WriteHistoryToFile(path string) {
 }
 
 func (h *HistoryManager) AppendHistoryToFile(path string) {
+	//If empty then it goes to the default history file
 	if path == "" {
-		//If empty then it goes to the default history file
+		//This means there is no file to append the data.
+		if h.defaultHistfilePath == "" {
+			return
+		}
+
 		path = h.defaultHistfilePath
 	}
 

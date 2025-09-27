@@ -25,7 +25,10 @@ import (
 func main() {
 
 	sigs := make(chan os.Signal, 1)
-	//Notifies the channel if a force exit signal by the os is made
+	// Notify the `sigs` channel when the process receives an interrupt or termination signal:
+	// - SIGINT  : Interrupt signal (usually from Ctrl+C)
+	// - SIGTERM : Termination signal (polite request to stop, e.g. from `kill`)
+	// - SIGHUP  : Hangup signal (sent when terminal closes or service manager restarts the process)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	go func() {
@@ -64,6 +67,7 @@ func main() {
 			tok := lex.NextToken()
 			tokens = append(tokens, tok)
 			if tok.Type == token.TokenEOF {
+				history.GetHistoryManager().AppendHistoryToFile("")
 				break
 			}
 		}
