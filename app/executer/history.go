@@ -66,7 +66,7 @@ func handleHistory(args []string) {
 
 	for i, line := range historySoFar {
 		// Print the history index and the line content
-		fmt.Println(i+1, line)
+		fmt.Println(line.Index, line.Line)
 	}
 }
 

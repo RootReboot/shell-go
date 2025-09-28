@@ -93,15 +93,19 @@ func (h *HistoryManager) init() {
 	h.loaded = true
 }
 
-// GetHistory returns the last `count` history entries as a slice of Go strings.
+/type HistoryEntry struct {
+	Index int
+	Line  string
+}
+
+// GetHistory returns the last `count` history entries along with their original history indices.
 // If count < 0, it returns all entries.
-func GetHistory(count int) []string {
+func GetHistory(count int) []HistoryEntry {
 	historyList := C.history_list()
 	if historyList == nil {
 		return nil
 	}
 
-	// Pointer arithmetic setup
 	historyListStartPointer := uintptr(unsafe.Pointer(historyList))
 	historyEntrySize := unsafe.Sizeof(*historyList)
 
@@ -122,16 +126,20 @@ func GetHistory(count int) []string {
 		startIndex = total - count
 	}
 
-	// Collect entries into a slice of Go strings
-	result := make([]string, 0, total-startIndex)
+	// Collect entries with their original indices
+	result := make([]HistoryEntry, 0, total-startIndex)
 	for i := startIndex; i < total; i++ {
 		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
 		entry := *(**C.HIST_ENTRY)(entryPointer)
-		result = append(result, C.GoString(entry.line))
+		result = append(result, HistoryEntry{
+			Index: i + 1, // original history index starts from 1
+			Line:  C.GoString(entry.line),
+		})
 	}
 
 	return result
 }
+
 func (h *HistoryManager) ReadLine(prompt string) string {
 	cPrompt := C.CString(prompt)
 	defer C.free(unsafe.Pointer(cPrompt))
