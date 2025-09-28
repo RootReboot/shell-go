@@ -93,7 +93,7 @@ func (h *HistoryManager) init() {
 	h.loaded = true
 }
 
-/type HistoryEntry struct {
+type HistoryEntry struct {
 	Index int
 	Line  string
 }
