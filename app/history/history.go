@@ -83,7 +83,7 @@ func (h *HistoryManager) init() {
 			C.read_history(h.defaultHistfilePathC)
 			h.fileStates[histfilePath] = &fileState{
 				startLength:  int(C.history_length),
-				appendOffset: int(C.history_length),
+				appendOffset: 0,
 			}
 		} else {
 			h.defaultHistfilePath = ""
