@@ -1,34 +1,23 @@
 [![progress-banner](https://backend.codecrafters.io/progress/shell/4e62f1ba-68a9-4bee-9cc2-bc22c187210e)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
 
-This is a starting point for Go solutions to the
-["Build Your Own Shell" Challenge](https://app.codecrafters.io/courses/shell/overview).
+# My POSIX-Compliant Shell
 
-In this challenge, you'll build your own POSIX compliant shell that's capable of
-interpreting shell commands, running external programs and builtin commands like
-cd, pwd, echo and more. Along the way, you'll learn about shell command parsing,
-REPLs, builtin commands, and more.
+This is my custom implementation of a **POSIX-compliant shell**, built as a personal project to deeply understand how shells work and experiment with performance optimizations.  
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+While it doesn't support all the features from the unix shell it does support big part of it. Like:
 
-# Passing the first stage
+- Parse and interpret shell commands  
+- Execute **external programs**  
+- Implement **builtin commands** such as `cd`, `pwd`, `echo`, `exit`, and `history`  
+- Integrate **GNU Readline** for command line editing, history, and tab-completion  
+- Handle **in-memory command history** with optional persistence to a history file, including `HISTSIZE` and `HISTFILESIZE`  
 
-The entry point for your `shell` implementation is in `app/main.go`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+Although many of the optimizations implemented are **not strictly necessary**, this project served as a playground to **push the boundaries of shell performance** and explore low-level memory handling, efficient data structures, game the GOLANG escape analysis and Go-C interop via CGO.  
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
-```
+The shell is designed to behave similarly to Bash:
 
-Time to move on to the next stage!
+- Commands are stored in memory as they are entered.  
+- The history file (`HISTFILE`) is only updated when the shell exits or when explicitly requested.  
+- Users can also read, write, or append history to arbitrary files while keeping per-file tracking.  
 
-# Stage 2 & beyond
-
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `go (1.24)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.go`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+**Note**: This project is primarily for learning purposes. For a structured learning experience on building a shell, check out [codecrafters.io](https://codecrafters.io).  
