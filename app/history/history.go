@@ -98,6 +98,43 @@ type HistoryEntry struct {
 	Line  string
 }
 
+func ForEachHistory(count int, fn func(index int, line unsafe.Pointer)) {
+	historyList := C.history_list()
+	if historyList == nil {
+		return
+	}
+
+	historyListStartPointer := uintptr(unsafe.Pointer(historyList))
+	//Get size of C.HIST_ENTRY
+	historyEntrySize := unsafe.Sizeof(*historyList)
+
+	// Count total entries
+	total := 0
+	for i := 0; ; i++ {
+		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
+		entry := *(**C.HIST_ENTRY)(entryPointer)
+		if entry == nil {
+			total = i
+			break
+		}
+	}
+
+	startIndex := 0
+	if count >= 0 && count < total {
+		startIndex = total - count
+	}
+
+	for i := startIndex; i < total; i++ {
+		entryPointer := unsafe.Pointer(historyListStartPointer + uintptr(i)*historyEntrySize)
+		// entryPointer is an unsafe.Pointer returned by the C Readline history function.
+		// The function actually returns a HIST_ENTRY** (pointer to a pointer to HIST_ENTRY),
+		// so we first cast entryPointer to **C.HIST_ENTRY, then dereference it once
+		// to get a *C.HIST_ENTRY, which points to the actual history entry struct.
+		entry := *(**C.HIST_ENTRY)(entryPointer)
+		fn(i+1, unsafe.Pointer(entry.line)) // raw C string
+	}
+}
+
 // GetHistory returns the last `count` history entries along with their original history indices.
 // If count < 0, it returns all entries.
 func GetHistory(count int) []HistoryEntry {

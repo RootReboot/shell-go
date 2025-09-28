@@ -1,17 +1,12 @@
 package executer
 
-/*
-#cgo LDFLAGS: -lreadline
-#include <stdio.h>
-#include <stdlib.h>
-#include <readline/history.h>
-*/
-import "C"
-
 import (
 	"fmt"
+	"io"
+	"os"
 	"shelly/app/history"
 	"strconv"
+	"unsafe"
 )
 
 // handleHistory prints the current Readline command history to stdout.
@@ -62,12 +57,33 @@ func handleHistory(args []string) {
 		}
 	}
 
-	historySoFar := history.GetHistory(count)
+	// historySoFar := history.GetHistory(count)
 
-	for _, line := range historySoFar {
-		// Print the history index and the line content
-		fmt.Println(line.Index, line.Line)
+	// for _, line := range historySoFar {
+	// 	// Print the history index and the line content
+	// 	fmt.Println(line.Index, line.Line)
+	// }
+
+	history.ForEachHistory(count, PrintHistory)
+}
+
+func PrintHistory(idx int, line unsafe.Pointer) {
+	fmt.Fprintf(os.Stdout, "%d ", idx)
+	PrintCStr(os.Stdout, line)
+	fmt.Fprintln(os.Stdout)
+}
+
+func PrintCStr(w io.Writer, cstr unsafe.Pointer) {
+	ptr := uintptr(cstr)
+	length := 0
+	//C doesn't buffer the string size, so we need to figure out the size. C.strlen could also be used
+	for *(*byte)(unsafe.Pointer(ptr + uintptr(length))) != 0 {
+		length++
 	}
+
+	// Convert to slice pointing directly to C memory (no allocation)
+	b := unsafe.Slice((*byte)(unsafe.Pointer(ptr)), length)
+	w.Write(b)
 }
 
 // loadHistoryFromFile loads history entries from a file into the readline history.
